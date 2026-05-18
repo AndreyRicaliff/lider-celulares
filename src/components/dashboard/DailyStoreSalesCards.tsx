@@ -176,19 +176,17 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
                 <div className="flex flex-col items-center justify-center flex-1 py-1">
                   {hasData ? (
                     <>
-                      {/* Bruto = número principal (maior valor) */}
+                      {/* Bruto = número principal */}
                       <span className={cn(
                         "text-xl font-black tracking-tight",
-                        jurosDia > 0 ? "text-amber-400" : reachedGoal ? "text-success" : "text-destructive"
+                        jurosDia > 1 ? "text-amber-400" : reachedGoal ? "text-success" : "text-destructive"
                       )}>
-                        {formatCurrency(jurosDia > 0 ? brutoDia : (totalDia > 0 ? totalDia : total))}
+                        {formatCurrency(brutoDia > 0 ? brutoDia : (totalDia > 0 ? totalDia : total))}
                       </span>
-                      {/* Líquido aparece abaixo só quando há juros */}
-                      {jurosDia > 0 && (
-                        <span className={cn("text-[11px] font-semibold mt-0.5", reachedGoal ? "text-success" : "text-destructive")}>
-                          Líq: {formatCurrency(totalDia > 0 ? totalDia : total)}
-                        </span>
-                      )}
+                      {/* Líquido sempre visível abaixo */}
+                      <span className={cn("text-[11px] font-semibold mt-0.5", reachedGoal ? "text-success/70" : "text-destructive/70")}>
+                        Líq: {formatCurrency(totalDia > 0 ? totalDia : total)}
+                      </span>
                     </>
                   ) : (
                     <span className="text-xs text-muted-foreground/40 italic">

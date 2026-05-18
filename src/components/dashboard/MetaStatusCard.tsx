@@ -10,15 +10,19 @@ interface MetaStatusCardProps {
   metaOuro: number;
   bonusPrata: number;
   bonusOuro: number;
+  totalFaturado?: number;
+  totalBruto?: number;
 }
 
-export const MetaStatusCard = ({ 
+export const MetaStatusCard = ({
   totalParaPrata,
-  totalParaOuro, 
-  metaPrata, 
+  totalParaOuro,
+  metaPrata,
   metaOuro,
   bonusPrata,
-  bonusOuro 
+  bonusOuro,
+  totalFaturado,
+  totalBruto,
 }: MetaStatusCardProps) => {
   const atingiuOuro = metaOuro > 0 && totalParaOuro >= metaOuro;
   const atingiuPrata = metaPrata > 0 && totalParaPrata >= metaPrata;
@@ -104,7 +108,19 @@ export const MetaStatusCard = ({
           <div className="flex-1">
             <p className="text-sm text-muted-foreground">Progresso das Metas</p>
             <p className="text-xl font-bold">{formatCurrency(totalParaPrata)}</p>
-            <p className="text-xs text-muted-foreground">Smartphones + Serviços</p>
+            <p className="text-[10px] text-muted-foreground/70">Smartphones + Serviços (s/ juros)</p>
+            {totalFaturado != null && totalFaturado > 0 && (
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                <span className="text-[10px] text-primary/80">
+                  Líquido total: {formatCurrency(totalFaturado)}
+                </span>
+                {totalBruto != null && totalBruto > totalFaturado + 0.01 && (
+                  <span className="text-[10px] text-amber-400/80">
+                    c/ juros: {formatCurrency(totalBruto)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         

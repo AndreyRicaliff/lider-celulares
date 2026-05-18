@@ -41,7 +41,7 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
 
   // Per-store: independent target date + totals + accumulated
   const storeData = useMemo(() => {
-    const result: Record<string, { total: number; targetDate: string | null; accumulated: number; isToday: boolean }> = {};
+    const result: Record<string, { total: number; totalDia: number; targetDate: string | null; accumulated: number; isToday: boolean }> = {};
 
     LOJAS_IDS.forEach(lojaId => {
       const storeDates = [...new Set(
@@ -69,13 +69,19 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
             .reduce((sum, v) => sum + computeValForMeta(v), 0)
         : 0;
 
+      const totalDia = targetDate
+        ? vendasDiarias
+            .filter(v => v.loja_id === lojaId && v.data === targetDate)
+            .reduce((sum, v) => sum + Number(v.valor_total), 0)
+        : 0;
+
       const accumulated = targetDate
         ? vendasDiarias
             .filter(v => v.loja_id === lojaId && v.data < targetDate!)
             .reduce((sum, v) => sum + computeValForMeta(v), 0)
         : 0;
 
-      result[lojaId] = { total, targetDate, accumulated, isToday };
+      result[lojaId] = { total, totalDia, targetDate, accumulated, isToday };
     });
 
     return result;
@@ -117,7 +123,7 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {LOJAS_IDS.map((lojaId) => {
-          const { total, targetDate, accumulated, isToday } = storeData[lojaId] || { total: 0, targetDate: null, accumulated: 0, isToday: false };
+          const { total, totalDia, targetDate, accumulated, isToday } = storeData[lojaId] || { total: 0, totalDia: 0, targetDate: null, accumulated: 0, isToday: false };
           const currentDailyGoal = getDailyGoal(lojaId, accumulated, targetDate);
           const reachedGoal = total >= currentDailyGoal && total > 0;
           const hasData = total > 0;
@@ -147,12 +153,19 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
 
                 <div className="flex flex-col items-center justify-center flex-1 py-1">
                   {hasData ? (
-                    <span className={cn(
-                      "text-xl font-black tracking-tight",
-                      reachedGoal ? "text-success" : "text-destructive"
-                    )}>
-                      {formatCurrency(total)}
-                    </span>
+                    <>
+                      <span className={cn(
+                        "text-xl font-black tracking-tight",
+                        reachedGoal ? "text-success" : "text-destructive"
+                      )}>
+                        {formatCurrency(total)}
+                      </span>
+                      {totalDia > total + 0.01 && (
+                        <span className="text-[9px] text-muted-foreground/60 mt-0.5">
+                          Total: {formatCurrency(totalDia)}
+                        </span>
+                      )}
+                    </>
                   ) : (
                     <span className="text-xs text-muted-foreground/40 italic">
                       {isCurrentMonth ? 'Sem dados hoje' : 'Sem dados'}

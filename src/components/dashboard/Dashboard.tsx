@@ -401,9 +401,11 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
           metaOuro={metaOuro}
           bonusPrata={bonusPrata}
           bonusOuro={bonusOuro}
+          totalFaturado={totalVendas}
+          totalBruto={totalBruto > 0 ? totalBruto : undefined}
         />
       )}
-      
+
       {effectiveLoja && isCampinaNatal && (
         <MetaStatusCard
           totalParaPrata={totalParaMetaPrata}
@@ -412,6 +414,8 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
           metaOuro={metaOuro}
           bonusPrata={0}
           bonusOuro={numericConfig?.loja_bonus_meta_ouro || 200}
+          totalFaturado={totalVendas}
+          totalBruto={totalBruto > 0 ? totalBruto : undefined}
         />
       )}
 

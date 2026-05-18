@@ -615,7 +615,7 @@ const MetricCard = ({ icon, label, value, subtitle }: MetricCardProps) => (
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">{label}</p>
-          {subtitle && <p className="text-xs text-muted-foreground/70 italic mb-1 hidden sm:block">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-muted-foreground/70 italic mb-1">{subtitle}</p>}
           <p className="text-lg sm:text-2xl font-bold text-gradient truncate">{value}</p>
         </div>
         <div className="p-1.5 sm:p-2 bg-muted rounded-lg flex-shrink-0">{icon}</div>

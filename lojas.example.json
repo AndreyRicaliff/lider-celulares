@@ -1,0 +1,32 @@
+[
+  {
+    "id": "campina-grande",
+    "bearer": "TOKEN_AQUI",
+    "consumerKey": "KEY_AQUI",
+    "consumerSecret": "SECRET_AQUI"
+  },
+  {
+    "id": "caruaru",
+    "bearer": "TOKEN_AQUI",
+    "consumerKey": "KEY_AQUI",
+    "consumerSecret": "SECRET_AQUI"
+  },
+  {
+    "id": "monteiro",
+    "bearer": "TOKEN_AQUI",
+    "consumerKey": "KEY_AQUI",
+    "consumerSecret": "SECRET_AQUI"
+  },
+  {
+    "id": "natal",
+    "bearer": "TOKEN_AQUI",
+    "consumerKey": "KEY_AQUI",
+    "consumerSecret": "SECRET_AQUI"
+  },
+  {
+    "id": "soledade",
+    "bearer": "TOKEN_AQUI",
+    "consumerKey": "KEY_AQUI",
+    "consumerSecret": "SECRET_AQUI"
+  }
+]

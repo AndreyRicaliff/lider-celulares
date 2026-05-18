@@ -1,0 +1,13 @@
+project_id = "ibpcexyrxwmknrfwifyy"
+
+[functions.manage-user]
+verify_jwt = true
+
+[functions.analyze-metas]
+verify_jwt = false
+
+[functions.sync-tenfront]
+verify_jwt = false
+
+[functions.receive-vendas]
+verify_jwt = false

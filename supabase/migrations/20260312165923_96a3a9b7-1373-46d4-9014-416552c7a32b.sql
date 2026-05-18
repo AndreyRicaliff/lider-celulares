@@ -1,0 +1,1 @@
+UPDATE colaboradores SET acesso_gerente = true WHERE id = 'af663e63-707a-4c6f-a7c4-f605b81b0daf';

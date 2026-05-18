@@ -1,0 +1,1 @@
+SELECT cron.unschedule('sync-tenfront-every-4h');

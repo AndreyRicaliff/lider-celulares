@@ -1,0 +1,1 @@
+ALTER TABLE public.vendas_diarias ADD COLUMN detalhes jsonb NOT NULL DEFAULT '{}'::jsonb;

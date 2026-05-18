@@ -1,0 +1,1 @@
+DELETE FROM dividas WHERE id = '3ffc6754-5d20-47ab-b0f7-287e1748415f';

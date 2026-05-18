@@ -1,0 +1,1 @@
+ALTER TABLE public.vendas_diarias ADD COLUMN geral NUMERIC DEFAULT 0;

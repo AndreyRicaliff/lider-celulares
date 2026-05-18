@@ -1,0 +1,1 @@
+UPDATE public.colaboradores SET nome = TRIM(nome);

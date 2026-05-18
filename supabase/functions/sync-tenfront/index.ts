@@ -616,6 +616,7 @@ const syncLoja = async (
   loja: LojaConfig,
   mes: string,
   dryRun: boolean,
+  forceFullFetch = false,
 ) => {
   // Debug log para verificar se Natal está entrando
   console.log(`[SYNC_LOJA] Iniciando ${loja.id}. Mes: ${mes}. DryRun: ${dryRun}`);
@@ -634,7 +635,7 @@ const syncLoja = async (
     return { loja_id: loja.id, mes, skipped: true, reason: `saldo_insuficiente (${saldo})` };
   }
 
-  const lastSyncDate = await getLastSyncDate(internalClient, loja.id, mes);
+  const lastSyncDate = forceFullFetch ? null : await getLastSyncDate(internalClient, loja.id, mes);
   console.log(`[${loja.id}] Última data no banco: ${lastSyncDate ?? 'nenhuma'}`);
   const allAtendimentos = await fetchAllAtendimentos(loja, mes, false, lastSyncDate);
   console.log(`[${loja.id}] Total atendimentos: ${allAtendimentos.length}`);
@@ -959,7 +960,7 @@ Deno.serve(async (req) => {
     const results = [];
     for (const loja of lojas) {
       try {
-        const result = await syncLoja(internalClient, loja, mes, dryRun);
+        const result = await syncLoja(internalClient, loja, mes, dryRun, force);
         results.push(result);
       } catch (err) {
         const msg = getErrorMessage(err);

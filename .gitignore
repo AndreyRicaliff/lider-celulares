@@ -29,5 +29,6 @@ dist-ssr
 .env.*
 lojas.json
 schema-setup.sql
+setup-crons.sql
 .sync-full.lock
 resultado-*.json

@@ -7,7 +7,7 @@ const corsHeaders = {
 
 const TENFRONT_API_URL = 'https://api.tenfront.com.br/v1/listar-atendimentos';
 const TENFRONT_SALDO_URL = 'https://api.tenfront.com.br/v1/saldo-token';
-const MIN_INTERVAL_MINUTES = 25;
+const MIN_INTERVAL_MINUTES = 9;
 const MIN_SALDO_THRESHOLD = 15;
 
 // Mapeamento: nome da API → nome canônico no sistema (por loja se necessário)

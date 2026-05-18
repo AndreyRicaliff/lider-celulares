@@ -425,13 +425,14 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
 
   console.log(`[${loja.id}] Tenfront: ${totalPages} páginas identificadas, p1: ${allRecords.length} registros`);
 
-  // Otimização: se a página 1 não tem nada mais novo que o último sync, para aqui (1 req total)
+  // Otimização: se a página 1 não tem nada mais novo que o último sync, pula o sync inteiro.
+  // Retorna [] para que syncLoja detecte mappedRows.length === 0 e não execute o DELETE + INSERT.
   if (lastSyncDate && !forceAll) {
     const p1dates = (firstData.Response || []).map((r: Atendimento) => parseDate(r.Data)?.isoDate).filter(Boolean) as string[];
     const newestInP1 = p1dates.sort().reverse()[0];
     if (newestInP1 && newestInP1 <= lastSyncDate) {
-      console.log(`[${loja.id}] Página 1 não tem novidades (newest: ${newestInP1}, lastSync: ${lastSyncDate}). Parando.`);
-      return allRecords;
+      console.log(`[${loja.id}] Página 1 não tem novidades (newest: ${newestInP1}, lastSync: ${lastSyncDate}). Pulando sync.`);
+      return [];
     }
   }
 

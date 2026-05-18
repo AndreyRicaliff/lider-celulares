@@ -183,13 +183,14 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
                         {formatCurrency(total)}
                       </span>
                       {(totalDia > total + 0.01 || jurosDia > 0) && (
-                        <div className="mt-0.5 flex flex-col items-center gap-0.5">
-                          <span className="text-[9px] text-muted-foreground/60">
+                        <div className="mt-1 flex flex-col items-center gap-0.5">
+                          <span className="text-[10px] text-muted-foreground/70 font-medium">
                             Líq: {formatCurrency(totalDia > 0 ? totalDia : total)}
                           </span>
                           {jurosDia > 0 && (
-                            <span className="text-[9px] text-amber-400/80">
-                              Bruto: {formatCurrency(brutoDia)} <span className="text-muted-foreground/50">(+{formatCurrency(jurosDia)})</span>
+                            <span className="text-[10px] text-amber-400 font-medium">
+                              Bruto: {formatCurrency(brutoDia)}{' '}
+                              <span className="text-[9px] text-amber-400/60">(+{formatCurrency(jurosDia)})</span>
                             </span>
                           )}
                         </div>

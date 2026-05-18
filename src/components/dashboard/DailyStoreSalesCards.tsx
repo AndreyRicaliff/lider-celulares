@@ -176,24 +176,19 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
                 <div className="flex flex-col items-center justify-center flex-1 py-1">
                   {hasData ? (
                     <>
+                      {/* Líquido = número principal */}
                       <span className={cn(
                         "text-xl font-black tracking-tight",
                         reachedGoal ? "text-success" : "text-destructive"
                       )}>
-                        {formatCurrency(total)}
+                        {formatCurrency(totalDia > 0 ? totalDia : total)}
                       </span>
-                      {(totalDia > total + 0.01 || jurosDia > 0) && (
-                        <div className="mt-1 flex flex-col items-center gap-0.5">
-                          <span className="text-[10px] text-muted-foreground/70 font-medium">
-                            Líq: {formatCurrency(totalDia > 0 ? totalDia : total)}
-                          </span>
-                          {jurosDia > 0 && (
-                            <span className="text-[10px] text-amber-400 font-medium">
-                              Bruto: {formatCurrency(brutoDia)}{' '}
-                              <span className="text-[9px] text-amber-400/60">(+{formatCurrency(jurosDia)})</span>
-                            </span>
-                          )}
-                        </div>
+                      {/* Bruto só aparece quando há juros (sempre > Líquido) */}
+                      {jurosDia > 0 && (
+                        <span className="text-[10px] text-amber-400 font-medium mt-0.5">
+                          Bruto: {formatCurrency(brutoDia)}{' '}
+                          <span className="text-[9px] text-amber-400/60">(+{formatCurrency(jurosDia)})</span>
+                        </span>
                       )}
                     </>
                   ) : (
@@ -214,7 +209,11 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
                     />
                   </div>
                   {hasData && (
-                    <p className="text-[9px] text-muted-foreground/50 text-right">{pct.toFixed(0)}% da meta</p>
+                    <p className="text-[9px] text-muted-foreground/50 text-right">
+                      {total < totalDia - 0.01 && (
+                        <span className="text-muted-foreground/40 mr-1">meta: {formatCurrency(total)} ·</span>
+                      )}
+                      {pct.toFixed(0)}% da meta</p>
                   )}
                 </div>
               </CardContent>

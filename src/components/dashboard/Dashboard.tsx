@@ -78,7 +78,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
   }, [vendasDiarias, temFiltroPeriodo, dataInicioStr, dataFimStr]);
 
   // Métricas do período (quando filtro ativo, usa vendas_diarias; senão, usa vendas mensais)
-  const { totalVendas, totaisPorCategoria, totalComissoes, totalVendedores, mediaComissao, ranking } = useMemo(() => {
+  const { totalVendas, totalBruto, totaisPorCategoria, totalComissoes, totalVendedores, mediaComissao, ranking } = useMemo(() => {
     if (temFiltroPeriodo) {
       // Usar vendas diárias filtradas
       const nomesCadastrados = registeredNames;
@@ -136,8 +136,10 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       // Para manter precisão, mostramos 0 ou avisamos que é mensal
       const totalComissoesVal = filteredComissoes.reduce((sum, c) => sum + Number(c.comissao_base) + Number(c.bonus_automatico) + Number(c.bonus_manual), 0); 
       
+      const totalBrutoFiltrado = vendasDiariasFiltradas.reduce((sum, v) => sum + (Number((v as any).valor_bruto) || 0), 0);
       return {
         totalVendas: totalGeral,
+        totalBruto: totalBrutoFiltrado,
         totaisPorCategoria: { smartphones, acessorios, cases, servicos, pelicula, assistenciaTecnica, geral },
         totalComissoes: totalComissoesVal,
         totalVendedores: registeredVendedores.size,
@@ -203,8 +205,10 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       vTotals[key].geral += (Number(detalhes?.['GERAL']) || (Number((v as any).geral) || 0));
     });
     
+    const totalBrutoMensal = allVendasList.reduce((sum, v) => sum + (Number((v as any).valor_bruto) || 0), 0);
     return {
       totalVendas: tv,
+      totalBruto: totalBrutoMensal,
       totaisPorCategoria: catTotals,
       totalComissoes: tc,
       totalVendedores: tvCount,
@@ -422,6 +426,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
           icon={<TrendingUp className="text-primary" />}
           label="Total de Vendas"
           value={formatCurrency(totalVendas)}
+          subtitle={totalBruto > 0 ? `Bruto: ${formatCurrency(totalBruto)}` : undefined}
         />
         <MetricCard
           icon={<DollarSign className="text-success" />}

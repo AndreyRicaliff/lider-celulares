@@ -37,6 +37,7 @@ export interface Venda {
   vendedor_nome: string;
   mes: string;
   valor_total: number;
+  valor_bruto?: number;
   geral?: number;
   detalhes: Record<string, number>;
   created_at: string;
@@ -50,6 +51,7 @@ export interface VendaDiaria {
   vendedor_nome: string;
   colaborador_id: string | null;
   valor_total: number;
+  valor_bruto?: number;
   smartphones: number;
   acessorios: number;
   servicos: number;

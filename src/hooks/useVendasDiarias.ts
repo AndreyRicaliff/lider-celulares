@@ -31,6 +31,7 @@ export const useVendasDiarias = (
     queryKey: ['vendas_diarias', lojaId, mes, useSharedBase, forceAllLojas],
     staleTime: 0,
     gcTime: 1000 * 60 * 30,
+    refetchInterval: 1000 * 60 * 2, // fallback: repoll a cada 2min se realtime falhar
     queryFn: async (): Promise<VendaDiaria[]> => {
       let query = supabase.from('vendas_diarias').select('*');
 

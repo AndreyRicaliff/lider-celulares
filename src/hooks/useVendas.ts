@@ -44,6 +44,7 @@ export const useVendas = (lojaId?: string, mes?: string, vendedor?: string) => {
     },
     staleTime: 0,
     gcTime: 1000 * 60 * 30,
+    refetchInterval: 1000 * 60 * 2,
   });
 };
 

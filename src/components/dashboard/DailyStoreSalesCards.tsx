@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { LOJAS, LOJAS_IDS } from '@/lib/constants';
 import { formatCurrency, getDaysInMonth } from '@/lib/formatters';
@@ -7,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
 import { ConfiguracaoData } from '@/hooks/useConfiguracoes';
 import { getDiasUteisNoMes, getDiasUteisDecorridos, getDiasDecorridosNoMes } from '@/lib/dateUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DailyStoreSalesCardsProps {
   vendasDiarias: VendaDiaria[];
@@ -31,6 +33,24 @@ function computeValForMeta(v: VendaDiaria): number {
 }
 
 export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }: DailyStoreSalesCardsProps) => {
+  const { data: brutoPorDia } = useQuery({
+    queryKey: ['atendimentos-bruto-dia', selectedMes],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('atendimentos_audit')
+        .select('loja_id, data_atendimento, valor_total, status')
+        .eq('mes', selectedMes)
+        .not('status', 'ilike', '%cancel%');
+      const grouped: Record<string, number> = {};
+      for (const a of data || []) {
+        const key = `${a.loja_id}|${a.data_atendimento}`;
+        grouped[key] = (grouped[key] || 0) + Number(a.valor_total);
+      }
+      return grouped;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   const today = (() => {
     const now = new Date();
     const utcDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
@@ -124,6 +144,8 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {LOJAS_IDS.map((lojaId) => {
           const { total, totalDia, targetDate, accumulated, isToday } = storeData[lojaId] || { total: 0, totalDia: 0, targetDate: null, accumulated: 0, isToday: false };
+          const brutoDia = targetDate ? (brutoPorDia?.[`${lojaId}|${targetDate}`] || 0) : 0;
+          const jurosDia = brutoDia > totalDia + 0.01 ? brutoDia - totalDia : 0;
           const currentDailyGoal = getDailyGoal(lojaId, accumulated, targetDate);
           const reachedGoal = total >= currentDailyGoal && total > 0;
           const hasData = total > 0;
@@ -163,6 +185,11 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
                       {totalDia > total + 0.01 && (
                         <span className="text-[9px] text-muted-foreground/60 mt-0.5">
                           Total: {formatCurrency(totalDia)}
+                        </span>
+                      )}
+                      {jurosDia > 0 && (
+                        <span className="text-[9px] text-amber-400/70 mt-0.5">
+                          +{formatCurrency(jurosDia)} juros
                         </span>
                       )}
                     </>

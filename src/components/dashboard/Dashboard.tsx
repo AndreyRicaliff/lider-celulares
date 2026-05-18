@@ -18,7 +18,7 @@ import { LoadingOverlay } from '@/components/ui/loading';
 import { formatCurrency } from '@/lib/formatters';
 import { LOJAS, LOJAS_IDS, isIgnoredColumn } from '@/lib/constants';
 import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
-import { TrendingUp, Users, DollarSign, Award, ShoppingBag, Smartphone, Shield, CalendarIcon, RefreshCw } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Award, ShoppingBag, Smartphone, Shield, CalendarIcon, RefreshCw, Percent } from 'lucide-react';
 import { RankingBotons } from '@/components/ranking/RankingBotons';
 import { MetaStatusCard } from './MetaStatusCard';
 import { VendasDiariasChart } from './VendasDiariasChart';
@@ -78,7 +78,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
   }, [vendasDiarias, temFiltroPeriodo, dataInicioStr, dataFimStr]);
 
   // Métricas do período (quando filtro ativo, usa vendas_diarias; senão, usa vendas mensais)
-  const { totalVendas, totalBruto, totaisPorCategoria, totalComissoes, totalVendedores, mediaComissao, ranking } = useMemo(() => {
+  const { totalVendas, totalBruto, juros, totaisPorCategoria, totalComissoes, totalVendedores, mediaComissao, ranking } = useMemo(() => {
     if (temFiltroPeriodo) {
       // Usar vendas diárias filtradas
       const nomesCadastrados = registeredNames;
@@ -140,6 +140,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       return {
         totalVendas: totalGeral,
         totalBruto: totalBrutoFiltrado,
+        juros: Math.max(0, totalBrutoFiltrado - totalGeral),
         totaisPorCategoria: { smartphones, acessorios, cases, servicos, pelicula, assistenciaTecnica, geral },
         totalComissoes: totalComissoesVal,
         totalVendedores: registeredVendedores.size,
@@ -209,6 +210,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
     return {
       totalVendas: tv,
       totalBruto: totalBrutoMensal,
+      juros: Math.max(0, totalBrutoMensal - tv),
       totaisPorCategoria: catTotals,
       totalComissoes: tc,
       totalVendedores: tvCount,
@@ -426,7 +428,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
           icon={<TrendingUp className="text-primary" />}
           label="Total de Vendas"
           value={formatCurrency(totalVendas)}
-          subtitle={totalBruto > 0 ? `Bruto: ${formatCurrency(totalBruto)}` : undefined}
+          subtitle={totalBruto > 0 ? `Bruto: ${formatCurrency(totalBruto)} (+${formatCurrency(juros)} juros)` : undefined}
         />
         <MetricCard
           icon={<DollarSign className="text-success" />}
@@ -515,6 +517,22 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
             </div>
           </CardContent>
         </Card>
+        {juros > 0 && (
+          <Card className="border-l-4 border-l-amber-500">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Percent className="text-amber-500 flex-shrink-0" size={18} />
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground uppercase truncate">Juros Parcelamento</p>
+                  <p className="text-sm sm:text-lg font-bold truncate text-amber-400">{formatCurrency(juros)}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {totalBruto > 0 ? `${((juros / totalBruto) * 100).toFixed(1)}% do bruto` : ''}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Gráfico de Vendas Diárias */}

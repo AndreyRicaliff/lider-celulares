@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppStore } from '@/store/appStore';
@@ -23,6 +23,16 @@ export const AuditoriaVendasPage = () => {
   const [apenasConcluidas, setApenasConcluidas] = useState(true);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('atendimentos-audit-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'atendimentos_audit' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['atendimentos-audit'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const syncMutation = useMutation({
     mutationFn: async () => {

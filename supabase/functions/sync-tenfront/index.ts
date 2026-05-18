@@ -860,7 +860,11 @@ const syncLoja = async (
           atendimento_id: a['ID atendimento'],
           vendedor_nome: (a.Vendedor || '').toUpperCase().trim(),
           data_atendimento: parseDate(a.Data)?.isoDate,
-          valor_total: a['Total bruto'] || 0,
+          valor_total: safeParseNumber(a['Total bruto']) || infoAtendimento.reduce((sum: number, info: any) => {
+            for (const v of [...(info.Venda || []), ...(info.Brinde || [])]) sum += safeParseNumber(v['Valor de venda'] || v.Valor || 0);
+            for (const t of info.Troca || []) sum += safeParseNumber(t['Valor de venda'] || t.Valor || 0);
+            return sum;
+          }, 0),
           detalhes_brutos: infoAtendimento,
           status: a.Status,
           mes: mes,

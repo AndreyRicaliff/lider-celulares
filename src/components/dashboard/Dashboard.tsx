@@ -424,12 +424,30 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
 
       {/* Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <MetricCard
-          icon={<TrendingUp className="text-primary" />}
-          label="Total de Vendas"
-          value={formatCurrency(totalVendas)}
-          subtitle={totalBruto > 0 ? `Bruto: ${formatCurrency(totalBruto)} (+${formatCurrency(juros)} juros)` : undefined}
-        />
+        <Card className="relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 gradient-primary" />
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Faturamento</p>
+                <div className="space-y-1.5">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Líquido (s/ juros)</p>
+                    <p className="text-lg sm:text-2xl font-bold text-gradient truncate">{formatCurrency(totalVendas)}</p>
+                  </div>
+                  {totalBruto > 0 && juros > 0 && (
+                    <div className="border-t border-border/30 pt-1.5">
+                      <p className="text-[10px] text-amber-400/80 uppercase tracking-wide">Bruto (c/ juros)</p>
+                      <p className="text-base sm:text-xl font-bold text-amber-400 truncate">{formatCurrency(totalBruto)}</p>
+                      <p className="text-[10px] text-muted-foreground/60 truncate">+{formatCurrency(juros)} ({((juros / totalBruto) * 100).toFixed(1)}%)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-1.5 sm:p-2 bg-muted rounded-lg flex-shrink-0"><TrendingUp className="text-primary" /></div>
+            </div>
+          </CardContent>
+        </Card>
         <MetricCard
           icon={<DollarSign className="text-success" />}
           label="Total Comissões"

@@ -1,0 +1,2 @@
+ALTER TABLE public.vendas_diarias ADD COLUMN IF NOT EXISTS valor_bruto NUMERIC NOT NULL DEFAULT 0;
+ALTER TABLE public.vendas          ADD COLUMN IF NOT EXISTS valor_bruto NUMERIC NOT NULL DEFAULT 0;

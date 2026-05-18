@@ -64,6 +64,7 @@ type MappedVenda = {
   data: string;
   detalhes: Record<string, number>;
   valor_total: number;
+  valor_bruto: number;
 };
 
 type LojaConfig = {
@@ -605,6 +606,7 @@ const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: string }, t
     data: parsed.isoDate,
     detalhes,
     valor_total: valorTotal,
+    valor_bruto: safeParseNumber(atendimento['Total bruto'] || 0),
   };
 };
 
@@ -698,6 +700,7 @@ const syncLoja = async (
       sumByDateVendedor.set(key, { ...row, detalhes: { ...row.detalhes } });
     } else {
       existing.valor_total += row.valor_total;
+      existing.valor_bruto += row.valor_bruto;
       for (const [k, v] of Object.entries(row.detalhes)) {
         existing.detalhes[k] = (existing.detalhes[k] || 0) + v;
       }
@@ -758,6 +761,7 @@ const syncLoja = async (
         vendedor_nome: row.vendedor_nome,
         colaborador_id: resolveColaboradorId(row.vendedor_nome),
         valor_total: row.valor_total,
+        valor_bruto: row.valor_bruto,
         smartphones,
         acessorios,
         servicos,
@@ -798,6 +802,7 @@ const syncLoja = async (
     colaborador_id: string | null;
     detalhes: Record<string, number>;
     valor_total: number;
+    valor_bruto: number;
     geral: number;
   }>();
   for (const row of diariasPayload) {
@@ -808,9 +813,11 @@ const syncLoja = async (
       colaborador_id: row.colaborador_id,
       detalhes: {},
       valor_total: 0,
+      valor_bruto: 0,
       geral: 0,
     };
     existing.valor_total += row.valor_total;
+    existing.valor_bruto += row.valor_bruto;
     existing.geral += row.geral;
     for (const [k, v] of Object.entries(row.detalhes)) {
       existing.detalhes[k] = (existing.detalhes[k] || 0) + v;

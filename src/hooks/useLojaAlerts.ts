@@ -12,8 +12,7 @@ import { computeValForMeta } from '@/lib/metaUtils';
 const ALERT_THRESHOLD = 0.70;
 
 function getMetaOuro(lojaId: string, numericConfig: Record<string, number>): number {
-  if (lojaId === 'soledade') return numericConfig.loja_meta_ouro || 65000;
-  if (lojaId === 'monteiro') return numericConfig.loja_meta_prata || 50000;
+  if (isLojaSoledadeMonteiro(lojaId)) return numericConfig.loja_meta_ouro || 65000;
   if (isLojaCampinaNatal(lojaId)) return numericConfig.gerente_meta_prata || 0;
   return numericConfig.loja_meta_ouro || 0;
 }

@@ -376,7 +376,8 @@ const getLastSyncDate = async (internalClient: any, lojaId: string, mes: string)
 
 // ===== Fetch all pages from API =====
 
-const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll = false, lastSyncDate?: string | null): Promise<Atendimento[]> => {
+const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll = false, lastSyncDate?: string | null): Promise<{ records: Atendimento[]; wasPartial: boolean }> => {
+  let wasPartial = false;
   const cleanToken = loja.bearer.startsWith('Bearer ') ? loja.bearer.slice(7) : loja.bearer;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -431,9 +432,9 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
   if (lastSyncDate && !forceAll) {
     const p1dates = (firstData.Response || []).map((r: Atendimento) => parseDate(r.Data)?.isoDate).filter(Boolean) as string[];
     const newestInP1 = p1dates.sort().reverse()[0];
-    if (newestInP1 && newestInP1 <= lastSyncDate) {
+    if (newestInP1 && newestInP1 < lastSyncDate) {
       console.log(`[${loja.id}] Página 1 não tem novidades (newest: ${newestInP1}, lastSync: ${lastSyncDate}). Pulando sync.`);
-      return [];
+      return { records: [], wasPartial: false };
     }
   }
 
@@ -450,11 +451,10 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
       console.error(`[${loja.id}] Erro ao buscar página ${page}: ${response.status} - ${errorText}`);
       // Se for erro de rate limit, paramos e retornamos o que já temos
       if (response.status === 429) {
-        console.warn(`[${loja.id}] Rate limit atingido na página ${page}. Aguardando 5 segundos antes de redefinir para a próxima loja...`);
-        // Se atingir 429, o melhor é parar o loop desta loja e deixar a próxima tentar, 
-        // ou esperar um tempo maior. Reduzimos a chance de bloqueio total.
+        console.warn(`[${loja.id}] Rate limit atingido na página ${page}/${totalPages} — sync será parcial.`);
+        wasPartial = true;
         await new Promise(resolve => setTimeout(resolve, 5000));
-        break; // Interrompe esta loja para não queimar mais créditos
+        break;
       }
       continue;
     }
@@ -489,7 +489,7 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
     }
   }
 
-  return allRecords;
+  return { records: allRecords, wasPartial };
 };
 
 // ===== Map atendimento to venda =====
@@ -639,7 +639,7 @@ const syncLoja = async (
 
   const lastSyncDate = forceFullFetch ? null : await getLastSyncDate(internalClient, loja.id, mes);
   console.log(`[${loja.id}] Última data no banco: ${lastSyncDate ?? 'nenhuma'}`);
-  const allAtendimentos = await fetchAllAtendimentos(loja, mes, false, lastSyncDate);
+  const { records: allAtendimentos, wasPartial } = await fetchAllAtendimentos(loja, mes, false, lastSyncDate);
   console.log(`[${loja.id}] Total atendimentos: ${allAtendimentos.length}`);
 
   // 1. Filtragem inicial: remover atendimentos cancelados antes da deduplicação por IMEI
@@ -707,15 +707,24 @@ const syncLoja = async (
     }
   }
 
-  // Resolver colaborador_id
-  const { data: colaboradores } = await internalClient
-    .from('colaboradores')
-    .select('id, nome')
-    .eq('loja_id', loja.id);
+  // Resolver colaborador_id — combina colaboradores da loja + vínculos cross-loja
+  const [{ data: mainColabs }, { data: vinculoColabs }] = await Promise.all([
+    internalClient.from('colaboradores').select('id, nome').eq('loja_id', loja.id),
+    internalClient
+      .from('colaborador_lojas')
+      .select('colaborador_id, colaboradores!inner(id, nome)')
+      .eq('loja_id', loja.id),
+  ]);
 
   const colaboradorByNome = new Map<string, string>();
-  (colaboradores ?? []).forEach((col: { id: string; nome: string }) => {
+  (mainColabs ?? []).forEach((col: { id: string; nome: string }) => {
     colaboradorByNome.set(normalize(col.nome), col.id);
+  });
+  (vinculoColabs ?? []).forEach((v: any) => {
+    const col = v.colaboradores;
+    if (col && !colaboradorByNome.has(normalize(col.nome))) {
+      colaboradorByNome.set(normalize(col.nome), col.id);
+    }
   });
 
   const resolveColaboradorId = (nome: string): string | null => {
@@ -885,8 +894,12 @@ const syncLoja = async (
     source_rows: mappedRows.length,
     vendedores_atualizados: vendasPayload.map((v) => v.vendedor_nome),
     sem_colaborador: semColaborador,
-    success: true,
-    error_message: unmappedProducts.size > 0 ? `Produtos caindo em GERAL: ${Array.from(unmappedProducts).slice(0, 5).join(', ')}` : null,
+    success: !wasPartial,
+    error_message: wasPartial
+      ? 'Rate limit: sync parcial — aguardar próximo ciclo'
+      : unmappedProducts.size > 0
+        ? `Produtos caindo em GERAL: ${Array.from(unmappedProducts).slice(0, 5).join(', ')}`
+        : null,
   });
 
   return {

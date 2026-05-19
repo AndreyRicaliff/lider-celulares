@@ -17,6 +17,39 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
+    // Verificar que o chamador é admin antes de qualquer ação
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const callerClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } }, auth: { autoRefreshToken: false, persistSession: false } }
+    )
+
+    const { data: { user: callerUser }, error: callerError } = await callerClient.auth.getUser()
+    if (callerError || !callerUser) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const { data: callerRole } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', callerUser.id)
+      .maybeSingle()
+
+    if (callerRole?.role !== 'admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     const { action, email, password, colaborador_id, user_id, role } = await req.json()
 
     console.log(`Action: ${action}, Email: ${email}, Role: ${role}`)

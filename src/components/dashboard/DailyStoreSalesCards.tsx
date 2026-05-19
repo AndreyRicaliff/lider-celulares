@@ -107,8 +107,9 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
     return result;
   }, [vendasDiarias, today, isCurrentMonth]);
 
-  const getDailyGoal = (lojaId: string, accumulated: number, targetDate: string | null) => {
-    if (!allConfigs || !allConfigs[lojaId] || !targetDate) return 3800;
+  const getGoalInfo = (lojaId: string, accumulated: number, targetDate: string | null) => {
+    const fallback = { dailyGoal: 3800, projected: null as number | null, metaOuro: 0 };
+    if (!allConfigs || !allConfigs[lojaId] || !targetDate) return fallback;
 
     const config = allConfigs[lojaId];
     const { numericConfig, diasFechamento } = config;
@@ -122,16 +123,52 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
       ? getDiasUteisDecorridos(selectedMes, diasFechamento, false, targetDate)
       : getDiasDecorridosNoMes(selectedMes, targetDate, diasFechamento, false);
 
+    const diasDecorridosComHoje = isSoledadeMonteiro
+      ? getDiasUteisDecorridos(selectedMes, diasFechamento, true, targetDate)
+      : getDiasDecorridosNoMes(selectedMes, targetDate, diasFechamento, true);
+
     const diasRestantes = Math.max(1, diasTotais - diasDecorridos);
 
-    let totalGoalValue = 0;
-    if (lojaId === 'soledade') totalGoalValue = numericConfig.loja_meta_ouro || 65000;
-    else if (lojaId === 'monteiro') totalGoalValue = numericConfig.loja_meta_prata || 50000;
-    else if (isLojaCampinaNatal(lojaId)) totalGoalValue = numericConfig.gerente_meta_prata || 0;
-    else totalGoalValue = numericConfig.loja_meta_ouro || 0;
+    let metaOuro = 0;
+    if (lojaId === 'soledade') metaOuro = numericConfig.loja_meta_ouro || 65000;
+    else if (lojaId === 'monteiro') metaOuro = numericConfig.loja_meta_prata || 50000;
+    else if (isLojaCampinaNatal(lojaId)) metaOuro = numericConfig.gerente_meta_prata || 0;
+    else metaOuro = numericConfig.loja_meta_ouro || 0;
 
-    const remainingGoal = Math.max(0, totalGoalValue - accumulated);
-    return remainingGoal / diasRestantes;
+    const remainingGoal = Math.max(0, metaOuro - accumulated);
+    const dailyGoal = remainingGoal / diasRestantes;
+
+    return { dailyGoal, metaOuro, projected: diasDecorridosComHoje > 0 ? null : null };
+  };
+
+  const getDailyGoal = (lojaId: string, accumulated: number, targetDate: string | null) =>
+    getGoalInfo(lojaId, accumulated, targetDate).dailyGoal;
+
+  const getProjection = (lojaId: string, totalSoFar: number, targetDate: string | null) => {
+    if (!allConfigs || !allConfigs[lojaId] || !targetDate || !isCurrentMonth) return null;
+
+    const { numericConfig, diasFechamento } = allConfigs[lojaId];
+    const isSoledadeMonteiro = isLojaSoledadeMonteiro(lojaId);
+
+    const diasTotais = isSoledadeMonteiro
+      ? getDiasUteisNoMes(selectedMes, diasFechamento)
+      : getDaysInMonth(selectedMes) - diasFechamento.filter(d => d.startsWith(selectedMes)).length;
+
+    const diasDecorridosComHoje = isSoledadeMonteiro
+      ? getDiasUteisDecorridos(selectedMes, diasFechamento, true, targetDate)
+      : getDiasDecorridosNoMes(selectedMes, targetDate, diasFechamento, true);
+
+    if (diasDecorridosComHoje <= 0 || diasTotais <= 0) return null;
+
+    const projected = (totalSoFar / diasDecorridosComHoje) * diasTotais;
+
+    let metaOuro = 0;
+    if (lojaId === 'soledade') metaOuro = numericConfig.loja_meta_ouro || 65000;
+    else if (lojaId === 'monteiro') metaOuro = numericConfig.loja_meta_prata || 50000;
+    else if (isLojaCampinaNatal(lojaId)) metaOuro = numericConfig.gerente_meta_prata || 0;
+    else metaOuro = numericConfig.loja_meta_ouro || 0;
+
+    return { projected, pctMeta: metaOuro > 0 ? (projected / metaOuro) * 100 : null };
   };
 
   return (
@@ -157,6 +194,8 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
               ? 'Hoje'
               : new Date(targetDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
             : null;
+
+          const projection = getProjection(lojaId, accumulated + total, targetDate);
 
           return (
             <Card key={lojaId} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow bg-card/40 backdrop-blur-sm border border-border/50">
@@ -211,6 +250,19 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
                         <span className="text-muted-foreground/40 mr-1">meta: {formatCurrency(total)} ·</span>
                       )}
                       {pct.toFixed(0)}% da meta</p>
+                  )}
+                  {projection && (
+                    <p className={cn(
+                      "text-[9px] font-semibold text-right mt-0.5",
+                      projection.pctMeta !== null && projection.pctMeta >= 100
+                        ? "text-success/70"
+                        : projection.pctMeta !== null && projection.pctMeta >= 80
+                          ? "text-amber-400/70"
+                          : "text-destructive/60"
+                    )}>
+                      Proj: {formatCurrency(projection.projected)}
+                      {projection.pctMeta !== null && ` · ${projection.pctMeta.toFixed(0)}% M.Ouro`}
+                    </p>
                   )}
                 </div>
               </CardContent>

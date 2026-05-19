@@ -485,8 +485,9 @@ export const ColaboradoresPage = () => {
       }
       setDialogOpen(false);
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      toast.error(error?.message || 'Erro ao salvar colaborador');
     }
   };
 

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Save, Settings, CalendarOff, RefreshCw, Database, Key, ShieldCheck } from 'lucide-react';
+import { Save, Settings, CalendarOff, RefreshCw, Database, Key, ShieldCheck, Copy } from 'lucide-react';
 import { DiasFechamentoSelector } from '@/components/configuracoes/DiasFechamentoSelector';
 import { VendedorBloqueiosManager } from '@/components/configuracoes/VendedorBloqueiosManager';
 import { useStoreTenfrontConfig } from '@/hooks/useStoreTenfrontConfig';
@@ -204,6 +204,13 @@ export const ConfiguracoesPage = () => {
   const saveConfig = useSaveConfiguracao();
   const [isSyncingTenfront, setIsSyncingTenfront] = useState(false);
 
+  const prevMes = useMemo(() => {
+    const [year, month] = selectedMes.split('-').map(Number);
+    const d = new Date(year, month - 2, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, [selectedMes]);
+  const { data: prevConfig } = useConfiguracao(lojaId, prevMes);
+
   const [formConfig, setFormConfig] = useState<Record<string, number>>({});
   const [diasFechamento, setDiasFechamento] = useState<string[]>([]);
 
@@ -217,6 +224,16 @@ export const ConfiguracoesPage = () => {
   const handleChange = useCallback((key: string, value: number) => {
     setFormConfig((prev) => ({ ...prev, [key]: value }));
   }, []);
+
+  const handleCopyFromPrevMonth = () => {
+    if (!prevConfig) {
+      toast.error('Nenhuma configuração encontrada para o mês anterior');
+      return;
+    }
+    setFormConfig(prevConfig.numericConfig);
+    setDiasFechamento(prevConfig.diasFechamento);
+    toast.success(`Configurações de ${prevMes} copiadas. Salve para confirmar.`);
+  };
 
   const handleSave = async () => {
     await saveConfig.mutateAsync({
@@ -288,6 +305,16 @@ export const ConfiguracoesPage = () => {
               className="w-[180px]"
             />
           </div>
+          <Button
+            variant="outline"
+            onClick={handleCopyFromPrevMonth}
+            disabled={!prevConfig}
+            title={`Copiar configurações de ${prevMes}`}
+            className="gap-2"
+          >
+            <Copy size={16} />
+            Copiar mês anterior
+          </Button>
           <Button onClick={handleSave} disabled={saveConfig.isPending}>
             <Save size={16} className="mr-2" /> Salvar
           </Button>

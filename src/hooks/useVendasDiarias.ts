@@ -109,6 +109,7 @@ export const useSaveVendasDiarias = () => {
     },
     onError: (error) => {
       console.error('Erro ao salvar vendas diárias:', error);
+      toast.error('Erro ao salvar vendas diárias: ' + error.message);
     },
   });
 };

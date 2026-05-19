@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { LOJAS, LOJAS_IDS, type LojaId } from '@/lib/constants';
 import { useAppStore } from '@/store/appStore';
 import { ColaboradorLoja } from '@/hooks/useAuth';
+import { useLojaAlerts } from '@/hooks/useLojaAlerts';
 import { 
   Home, 
   Users, 
@@ -34,15 +35,17 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLojaId, lojasDisponiveis, onSwitchLoja, onSignOut }: SidebarProps) => {
-  const { 
-    currentView, 
-    setCurrentView, 
-    selectedLoja, 
+  const {
+    currentView,
+    setCurrentView,
+    selectedLoja,
     setSelectedLoja,
+    selectedMes,
     sidebarOpen,
     setSidebarOpen
   } = useAppStore();
-  
+
+  const lojaAlerts = useLojaAlerts(selectedMes);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   const toggleMenu = (lojaId: string) => {
@@ -280,7 +283,14 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                       'transition-transform duration-200',
                       openMenus[lojaId] && 'rotate-180'
                     )} />}
-                    label={LOJAS[lojaId]}
+                    label={
+                      <span className="flex items-center gap-1.5">
+                        {LOJAS[lojaId]}
+                        {lojaAlerts.has(lojaId) && (
+                          <span className="inline-block h-2 w-2 rounded-full bg-destructive animate-pulse flex-shrink-0" title="Abaixo de 70% da projeção" />
+                        )}
+                      </span>
+                    }
                     active={openMenus[lojaId]}
                     onClick={() => toggleMenu(lojaId)}
                   />
@@ -378,7 +388,14 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                       'transition-transform duration-200',
                       openMenus[lojaId] && 'rotate-180'
                     )} />}
-                    label={LOJAS[lojaId]}
+                    label={
+                      <span className="flex items-center gap-1.5">
+                        {LOJAS[lojaId]}
+                        {lojaAlerts.has(lojaId) && (
+                          <span className="inline-block h-2 w-2 rounded-full bg-destructive animate-pulse flex-shrink-0" title="Abaixo de 70% da projeção" />
+                        )}
+                      </span>
+                    }
                     active={openMenus[lojaId]}
                     onClick={() => toggleMenu(lojaId)}
                   />
@@ -472,7 +489,7 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
 
 interface NavItemProps {
   icon: React.ReactNode;
-  label: string;
+  label: React.ReactNode;
   active?: boolean;
   onClick: () => void;
   variant?: 'default' | 'loja';

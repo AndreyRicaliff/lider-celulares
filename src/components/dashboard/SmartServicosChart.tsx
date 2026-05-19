@@ -21,6 +21,8 @@ interface VendedorData {
   servicos: number;
   total: number;
   aproveitamento: number;
+  valorSmartphones: number;
+  valorServicos: number;
 }
 
 const CORES = {
@@ -35,8 +37,12 @@ const normalizeName = (value: string) =>
     .trim()
     .toUpperCase();
 
+const fmt = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
+  const entry = payload[0]?.payload as VendedorData | undefined;
   const sm = payload.find((p: any) => p.dataKey === 'smartphones')?.value || 0;
   const sv = payload.find((p: any) => p.dataKey === 'servicos')?.value || 0;
   const total = sm + sv;
@@ -47,14 +53,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <p className="font-semibold mb-2">{label}</p>
       <div className="flex items-center gap-2 mb-1">
         <span className="w-3 h-3 rounded" style={{ backgroundColor: CORES.smartphones }} />
-        <span>Smartphones: <strong>{sm}</strong> un.</span>
+        <span>Smartphones: <strong>{sm}</strong> un. <span className="text-muted-foreground">· {fmt(entry?.valorSmartphones || 0)}</span></span>
       </div>
       <div className="flex items-center gap-2 mb-1">
         <span className="w-3 h-3 rounded" style={{ backgroundColor: CORES.servicos }} />
-        <span>Serviços: <strong>{sv}</strong> un.</span>
+        <span>Serviços: <strong>{sv}</strong> un. <span className="text-muted-foreground">· {fmt(entry?.valorServicos || 0)}</span></span>
       </div>
       <p className="text-muted-foreground mt-1 border-t border-border pt-1">
-        Total: <strong>{total}</strong> un.
+        Total: <strong>{total}</strong> un. · {fmt((entry?.valorSmartphones || 0) + (entry?.valorServicos || 0))}
       </p>
       <p className="mt-1 flex items-center gap-1">
         <TrendingUp size={12} className="text-primary" />
@@ -80,19 +86,21 @@ export const SmartServicosChart = ({ lojaId, mes, dataInicio, dataFim, forceAllL
       if (dataFim && v.data > dataFim) return;
 
       const key = v.vendedor_nome.trim();
-      if (!vendedorMap[key]) vendedorMap[key] = { smartphones: 0, servicos: 0 };
+      if (!vendedorMap[key]) vendedorMap[key] = { smartphones: 0, servicos: 0, valorSmartphones: 0, valorServicos: 0 };
       const det = (v.detalhes || {}) as Record<string, number>;
       const qtdSm = Number(det['__qtd_smartphones']) || 0;
       const qtdSv = Number(det['__qtd_servicos']) || 0;
       vendedorMap[key].smartphones += qtdSm;
       vendedorMap[key].servicos += qtdSv;
+      vendedorMap[key].valorSmartphones += Number(v.smartphones) || 0;
+      vendedorMap[key].valorServicos += Number(v.servicos) || 0;
     });
 
     return Object.entries(vendedorMap)
       .map(([nome, vals]): VendedorData => {
         const total = vals.smartphones + vals.servicos;
         const aproveitamento = vals.smartphones > 0 ? (vals.servicos / vals.smartphones) * 100 : 0;
-        return { nome, smartphones: vals.smartphones, servicos: vals.servicos, total, aproveitamento };
+        return { nome, smartphones: vals.smartphones, servicos: vals.servicos, total, aproveitamento, valorSmartphones: vals.valorSmartphones, valorServicos: vals.valorServicos };
       })
       .filter(v => v.total > 0)
       .sort((a, b) => b.total - a.total);
@@ -103,7 +111,9 @@ export const SmartServicosChart = ({ lojaId, mes, dataInicio, dataFim, forceAllL
     const sv = vendedorData.reduce((s, v) => s + v.servicos, 0);
     const total = sm + sv;
     const aproveitamento = sm > 0 ? ((sv / sm) * 100).toFixed(1) : '0';
-    return { smartphones: sm, servicos: sv, total, aproveitamento };
+    const valorSm = vendedorData.reduce((s, v) => s + v.valorSmartphones, 0);
+    const valorSv = vendedorData.reduce((s, v) => s + v.valorServicos, 0);
+    return { smartphones: sm, servicos: sv, total, aproveitamento, valorSmartphones: valorSm, valorServicos: valorSv };
   }, [vendedorData]);
 
   const chartHeight = Math.max(300, vendedorData.length * 45 + 80);
@@ -140,11 +150,13 @@ export const SmartServicosChart = ({ lojaId, mes, dataInicio, dataFim, forceAllL
             <Smartphone className="mx-auto text-blue-500 mb-1" size={18} />
             <p className="text-xs text-muted-foreground">Smartphones</p>
             <p className="text-lg font-bold text-blue-500">{totais.smartphones} un.</p>
+            <p className="text-xs text-blue-400/80">{fmt(totais.valorSmartphones)}</p>
           </div>
           <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center">
             <Shield className="mx-auto text-green-500 mb-1" size={18} />
             <p className="text-xs text-muted-foreground">Serviços</p>
             <p className="text-lg font-bold text-green-500">{totais.servicos} un.</p>
+            <p className="text-xs text-green-400/80">{fmt(totais.valorServicos)}</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground mt-1">Total</p>
@@ -189,9 +201,10 @@ export const SmartServicosChart = ({ lojaId, mes, dataInicio, dataFim, forceAllL
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs">Vendedor</TableHead>
-                  <TableHead className="text-xs text-center">📱 Smart</TableHead>
-                  <TableHead className="text-xs text-center">🛡️ Serviços</TableHead>
-                  <TableHead className="text-xs text-center">Total</TableHead>
+                  <TableHead className="text-xs text-center">📱 Smart (un.)</TableHead>
+                  <TableHead className="text-xs text-center">📱 Smart (R$)</TableHead>
+                  <TableHead className="text-xs text-center">🛡️ Serv. (un.)</TableHead>
+                  <TableHead className="text-xs text-center">🛡️ Serv. (R$)</TableHead>
                   <TableHead className="text-xs text-center">Aproveitamento</TableHead>
                 </TableRow>
               </TableHeader>
@@ -200,8 +213,9 @@ export const SmartServicosChart = ({ lojaId, mes, dataInicio, dataFim, forceAllL
                   <TableRow key={v.nome}>
                     <TableCell className="text-xs font-medium">{v.nome}</TableCell>
                     <TableCell className="text-xs text-center text-blue-500 font-semibold">{v.smartphones}</TableCell>
+                    <TableCell className="text-xs text-center text-blue-400">{fmt(v.valorSmartphones)}</TableCell>
                     <TableCell className="text-xs text-center text-green-500 font-semibold">{v.servicos}</TableCell>
-                    <TableCell className="text-xs text-center font-semibold">{v.total}</TableCell>
+                    <TableCell className="text-xs text-center text-green-400">{fmt(v.valorServicos)}</TableCell>
                     <TableCell className="text-xs text-center">
                       <span className={`font-semibold ${v.aproveitamento >= 50 ? 'text-green-500' : v.aproveitamento >= 30 ? 'text-yellow-500' : 'text-red-500'}`}>
                         {v.aproveitamento.toFixed(0)}%
@@ -209,12 +223,12 @@ export const SmartServicosChart = ({ lojaId, mes, dataInicio, dataFim, forceAllL
                     </TableCell>
                   </TableRow>
                 ))}
-                {/* Totals row */}
                 <TableRow className="bg-muted/50 font-bold">
                   <TableCell className="text-xs">TOTAL</TableCell>
                   <TableCell className="text-xs text-center text-blue-500">{totais.smartphones}</TableCell>
+                  <TableCell className="text-xs text-center text-blue-400">{fmt(totais.valorSmartphones)}</TableCell>
                   <TableCell className="text-xs text-center text-green-500">{totais.servicos}</TableCell>
-                  <TableCell className="text-xs text-center">{totais.total}</TableCell>
+                  <TableCell className="text-xs text-center text-green-400">{fmt(totais.valorServicos)}</TableCell>
                   <TableCell className="text-xs text-center text-primary">{totais.aproveitamento}%</TableCell>
                 </TableRow>
               </TableBody>

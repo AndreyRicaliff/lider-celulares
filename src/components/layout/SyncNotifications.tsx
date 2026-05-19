@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface SyncLog {
   id: string;
@@ -60,10 +61,15 @@ export const SyncNotifications = () => {
     const unreadIds = logs.filter((l) => !l.lido).map((l) => l.id);
     if (unreadIds.length === 0) return;
 
-    await supabase
+    const { error } = await supabase
       .from('sync_logs')
       .update({ lido: true })
       .in('id', unreadIds);
+
+    if (error) {
+      toast.error('Erro ao marcar notificações como lidas');
+      return;
+    }
 
     setLogs((prev) => prev.map((l) => ({ ...l, lido: true })));
   };

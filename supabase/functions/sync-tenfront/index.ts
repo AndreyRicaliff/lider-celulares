@@ -7,7 +7,7 @@ const corsHeaders = {
 
 const TENFRONT_API_URL = 'https://api.tenfront.com.br/v1/listar-atendimentos';
 const TENFRONT_SALDO_URL = 'https://api.tenfront.com.br/v1/saldo-token';
-const MIN_INTERVAL_MINUTES = 9;
+const MIN_INTERVAL_MINUTES = 20;
 const MIN_SALDO_THRESHOLD = 15;
 
 // Mapeamento: nome da API → nome canônico no sistema (por loja se necessário)
@@ -976,8 +976,22 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Identify lojas that already hit their daily rate limit today — skip them to preserve quota
+    const todayUTC = new Date().toISOString().split('T')[0];
+    const { data: todayFailLogs } = await internalClient
+      .from('sync_logs')
+      .select('loja_id')
+      .gte('created_at', `${todayUTC}T00:00:00`)
+      .ilike('error_message', '%diário%');
+    const dailyLimitedLojas = new Set((todayFailLogs || []).map((r: { loja_id: string }) => r.loja_id));
+
     const results = [];
     for (const loja of lojas) {
+      if (!force && dailyLimitedLojas.has(loja.id)) {
+        console.log(`[${loja.id}] Rate limit diário já atingido hoje — pulando até meia-noite.`);
+        results.push({ loja_id: loja.id, skipped: true, reason: 'daily_rate_limit_today' });
+        continue;
+      }
       try {
         const result = await syncLoja(internalClient, loja, mes, dryRun, force);
         results.push(result);

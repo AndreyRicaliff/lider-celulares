@@ -24,6 +24,7 @@ import { MetaStatusCard } from './MetaStatusCard';
 import { VendasDiariasChart } from './VendasDiariasChart';
 import { SmartServicosChart } from './SmartServicosChart';
 import { DailyStoreSalesCards } from './DailyStoreSalesCards';
+import { LojaComparativoTable } from './LojaComparativoTable';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -84,7 +85,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       const nomesCadastrados = registeredNames;
       
       let smartphones = 0, acessorios = 0, servicos = 0, cases = 0, pelicula = 0, assistenciaTecnica = 0, geral = 0, totalGeral = 0;
-      const vendedorTotals: Record<string, { nome: string; loja: string; total: number; vendas: number; smartphones: number; acessorios: number; cases: number; pelicula: number; servicos: number; geral: number }> = {};
+      const vendedorTotals: Record<string, { nome: string; loja: string; lojaId: string; total: number; vendas: number; smartphones: number; acessorios: number; cases: number; pelicula: number; servicos: number; geral: number }> = {};
       
       vendasDiariasFiltradas.forEach(v => {
         const normalizedName = v.vendedor_nome.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -115,7 +116,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
         // (Isso garante que o IGOR apareça se houver filtro de data, por exemplo)
         const key = v.vendedor_nome.trim().toUpperCase();
         if (!vendedorTotals[key]) {
-          vendedorTotals[key] = { nome: key, loja: LOJAS[v.loja_id as keyof typeof LOJAS] || v.loja_id, total: 0, vendas: 0, smartphones: 0, acessorios: 0, cases: 0, pelicula: 0, servicos: 0, geral: 0 };
+          vendedorTotals[key] = { nome: key, loja: LOJAS[v.loja_id as keyof typeof LOJAS] || v.loja_id, lojaId: v.loja_id, total: 0, vendas: 0, smartphones: 0, acessorios: 0, cases: 0, pelicula: 0, servicos: 0, geral: 0 };
         }
         vendedorTotals[key].total += vtVal;
         vendedorTotals[key].vendas += 1;
@@ -181,12 +182,12 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       };
     }, { smartphones: 0, acessorios: 0, cases: 0, servicos: 0, pelicula: 0, assistenciaTecnica: 0, geral: 0 });
     
-    const vTotals: Record<string, { nome: string; lojas: Set<string>; total: number; vendas: number; smartphones: number; acessorios: number; cases: number; pelicula: number; servicos: number; geral: number }> = {};
+    const vTotals: Record<string, { nome: string; lojas: Set<string>; total: number; vendas: number; smartphones: number; acessorios: number; cases: number; pelicula: number; servicos: number; geral: number; primaryLojaId: string }> = {};
     filteredVendas.forEach(v => {
       const key = v.vendedor_nome.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const detalhes = v.detalhes as Record<string, number>;
       if (!vTotals[key]) {
-        vTotals[key] = { nome: key, lojas: new Set([v.loja_id]), total: 0, vendas: 0, smartphones: 0, acessorios: 0, cases: 0, pelicula: 0, servicos: 0, geral: 0 };
+        vTotals[key] = { nome: key, lojas: new Set([v.loja_id]), total: 0, vendas: 0, smartphones: 0, acessorios: 0, cases: 0, pelicula: 0, servicos: 0, geral: 0, primaryLojaId: v.loja_id };
       } else {
         vTotals[key].lojas.add(v.loja_id);
       }
@@ -217,7 +218,8 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       mediaComissao: tvCount > 0 ? tc / tvCount : 0,
       ranking: Object.values(vTotals).map(item => ({
         ...item,
-        loja: item.lojas.size > 1 ? 'Multiloja' : (LOJAS[Array.from(item.lojas)[0] as keyof typeof LOJAS] || Array.from(item.lojas)[0])
+        loja: item.lojas.size > 1 ? 'Multiloja' : (LOJAS[Array.from(item.lojas)[0] as keyof typeof LOJAS] || Array.from(item.lojas)[0]),
+        lojaId: item.lojas.size > 1 ? 'multiloja' : item.primaryLojaId,
       })).sort((a, b) => b.total - a.total).slice(0, 10),
     };
   }, [temFiltroPeriodo, vendasDiariasFiltradas, vendas, filteredVendas, filteredComissoes, colaboradores]);
@@ -575,6 +577,16 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
         ))
       )}
 
+      {/* Comparativo de Lojas (só quando todas as lojas estão selecionadas) */}
+      {!effectiveLoja && (
+        <LojaComparativoTable
+          selectedMes={selectedMes}
+          allConfigs={allConfigs}
+          vendasMensais={(vendas || []) as any}
+          vendasDiarias={vendasDiarias}
+        />
+      )}
+
       {/* Ranking Vendas */}
       <Card>
         <CardHeader className="pb-4 border-b border-border/50 p-4 sm:p-6">
@@ -589,29 +601,48 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
             </p>
           ) : (
             <div className="divide-y divide-border/50">
-              {ranking.map((item, index) => (
-                <div key={item.nome} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-accent/50 transition-colors">
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0 ${
-                    index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-black' :
-                    index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-black' :
-                    index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white' :
-                    'bg-muted border border-border text-muted-foreground'
-                  }`}>
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm sm:text-base truncate">{item.nome}</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground truncate">{item.loja}</p>
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs mt-1">
-                      <span className="text-blue-400 font-medium">📱 {formatCurrency(item.smartphones)}</span>
-                      <span className="text-purple-400 font-medium">🛡️ {formatCurrency(item.servicos)}</span>
-                      <span className="text-green-400">🛍️ {formatCurrency(item.acessorios)}</span>
-                      {item.geral > 0 && <span className="text-slate-400 font-medium">📦 GERAL: {formatCurrency(item.geral)}</span>}
+              {ranking.map((item, index) => {
+                const lojaConfig = allConfigs?.[item.lojaId]?.numericConfig;
+                const faltaFase = lojaConfig ? (() => {
+                  const f1 = lojaConfig.servicos_meta_fase1 || 1500;
+                  const f2 = lojaConfig.servicos_meta_fase2 || 2000;
+                  const f3 = lojaConfig.servicos_meta_fase3 || 2500;
+                  const s = item.servicos;
+                  if (s >= f3) return { label: '✓ F3 — Máximo', color: 'text-success' };
+                  if (s >= f2) return { label: `✓F2 · Falta ${formatCurrency(f3 - s)} p/ F3`, color: 'text-amber-400' };
+                  if (s >= f1) return { label: `✓F1 · Falta ${formatCurrency(f2 - s)} p/ F2`, color: 'text-amber-400/70' };
+                  return { label: `Falta ${formatCurrency(f1 - s)} p/ F1`, color: 'text-destructive/70' };
+                })() : null;
+
+                return (
+                  <div key={item.nome} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-accent/50 transition-colors">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0 ${
+                      index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-black' :
+                      index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-black' :
+                      index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white' :
+                      'bg-muted border border-border text-muted-foreground'
+                    }`}>
+                      {index + 1}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">{item.nome}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{item.loja}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs mt-1">
+                        <span className="text-blue-400 font-medium">📱 {formatCurrency(item.smartphones)}</span>
+                        <span className="text-purple-400 font-medium">🛡️ {formatCurrency(item.servicos)}</span>
+                        <span className="text-green-400">🛍️ {formatCurrency(item.acessorios)}</span>
+                        {item.geral > 0 && <span className="text-slate-400 font-medium">📦 GERAL: {formatCurrency(item.geral)}</span>}
+                      </div>
+                      {faltaFase && (
+                        <p className={`text-[10px] font-semibold mt-0.5 ${faltaFase.color}`}>
+                          Serv: {faltaFase.label}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-sm sm:text-lg font-semibold text-primary flex-shrink-0">{formatCurrency(item.total)}</p>
                   </div>
-                  <p className="text-sm sm:text-lg font-semibold text-primary flex-shrink-0">{formatCurrency(item.total)}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

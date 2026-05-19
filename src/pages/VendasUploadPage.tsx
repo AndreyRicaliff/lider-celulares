@@ -314,7 +314,20 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
       await queryClient.invalidateQueries({ queryKey: ['vendas', lojaId, selectedMes] });
       await queryClient.refetchQueries({ queryKey: ['vendas', lojaId, selectedMes] });
 
-      toast.success(`${data?.synced ?? 0} vendas sincronizadas da Tenfront.`);
+      // data.results is an array of per-loja results: { loja_id, synced, error? }
+      const results: Array<{ loja_id: string; synced?: number; error?: string }> = data?.results || [];
+      const totalSynced = results.reduce((sum: number, r) => sum + (r.synced || 0), 0);
+      const failedLojas = results.filter((r) => r.error);
+
+      if (failedLojas.length > 0 && totalSynced === 0) {
+        toast.error(`Sync falhou: ${failedLojas.map((r) => `${r.loja_id}: ${r.error}`).join('; ')}`);
+      } else if (failedLojas.length > 0) {
+        toast.warning(`${totalSynced} vendas sincronizadas. Falhas em: ${failedLojas.map((r) => r.loja_id).join(', ')}`);
+      } else if (data?.skipped) {
+        toast.info(data.reason || 'Sync ignorado — intervalo mínimo não atingido.');
+      } else {
+        toast.success(`${totalSynced} vendas sincronizadas da Tenfront.`);
+      }
       
       // Auto-recalculate commissions after sync if not in read-only mode
       if (!readOnly) {

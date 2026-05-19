@@ -26,6 +26,7 @@ import { SmartServicosChart } from './SmartServicosChart';
 import { DailyStoreSalesCards } from './DailyStoreSalesCards';
 import { LojaComparativoTable } from './LojaComparativoTable';
 import { HistoricoLojaChart } from './HistoricoLojaChart';
+import { SyncStatusBar } from './SyncStatusBar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -300,6 +301,9 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
+      {/* Indicador de consumo da API Tenfront — apenas admin/supervisão */}
+      {isAdmin && <SyncStatusBar />}
+
       {/* Filters - apenas para admin */}
       {!colaboradorLojaId && (
         <Card className="!animate-none">

@@ -199,6 +199,7 @@ export const DividasManager = ({ colaborador, dividas, selectedLoja }: DividasMa
   };
 
   return (
+    <>
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm">
@@ -413,5 +414,6 @@ export const DividasManager = ({ colaborador, dividas, selectedLoja }: DividasMa
       </DialogContent>
     </Dialog>
     <ConfirmDialog {...confirmDialogProps} />
+    </>
   );
 };

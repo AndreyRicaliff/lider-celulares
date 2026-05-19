@@ -8,7 +8,8 @@ import { useComissoes, useSaveComissoes } from '@/hooks/useComissoes';
 import { useConfiguracao } from '@/hooks/useConfiguracoes';
 import { useCalculateBoton } from '@/hooks/useBotons';
 import { useVendasDiarias, useSaveVendasDiarias, calcularVendasDoDia } from '@/hooks/useVendasDiarias';
-import { LOJAS, getDefaultConfig, isVendedorExcluido, getAjusteBonusPercentual, getVendorNameMapping, getVendorConfigOverrides, getFixedPayrollOverride, isIgnoredColumn, isLojaExcluidaBotons } from '@/lib/constants';
+import { LOJAS, LOJAS_IDS, getDefaultConfig, isVendedorExcluido, getAjusteBonusPercentual, getVendorNameMapping, getVendorConfigOverrides, getFixedPayrollOverride, isIgnoredColumn, isLojaExcluidaBotons } from '@/lib/constants';
+import { calculateCommissionsForLoja } from '@/lib/batchCalculateCommissions';
 import { isLojaCampinaNatal, isLojaSoledadeMonteiro, isLojaNatalLike } from '@/lib/lojaRules';
 import { formatCurrency, getDaysInMonth, getCurrentDayOfMonth, getCurrentMonth } from '@/lib/formatters';
 import { getDiasUteisNoMes, getDiasUteisDecorridos } from '@/lib/dateUtils';
@@ -329,11 +330,23 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
         toast.success(`${totalSynced} vendas sincronizadas da Tenfront.`);
       }
       
-      // Auto-recalculate commissions after sync if not in read-only mode
-      if (!readOnly) {
-        setTimeout(() => {
-          calculateCommissions();
-        }, 500);
+      // Auto-recalculate commissions for all lojas with synced data
+      if (!readOnly && totalSynced > 0) {
+        const lojasComDados = results.filter(r => (r.synced || 0) > 0).map(r => r.loja_id);
+        // Run in background — no await so UI isn't blocked
+        Promise.allSettled(
+          lojasComDados.map(lid => calculateCommissionsForLoja(lid, selectedMes))
+        ).then(calcResults => {
+          const totalFolhas = calcResults.reduce((sum, r) => sum + (r.status === 'fulfilled' ? r.value.count : 0), 0);
+          const erros = calcResults.filter(r => r.status === 'fulfilled' && r.value.error).map(r => (r as any).value.error);
+          if (totalFolhas > 0) {
+            toast.success(`${totalFolhas} folhas de comissão calculadas automaticamente.`);
+            queryClient.invalidateQueries({ queryKey: ['comissoes'] });
+          }
+          if (erros.length > 0) {
+            console.warn('[batchCalc] erros parciais:', erros);
+          }
+        });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha ao sincronizar vendas da Tenfront.';

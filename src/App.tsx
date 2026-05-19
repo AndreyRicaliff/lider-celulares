@@ -18,8 +18,9 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-dark flex items-center justify-center">
+      <div className="min-h-screen gradient-dark flex flex-col items-center justify-center gap-4">
         <LoadingSpinner size="lg" />
+        <p className="text-muted-foreground text-sm">Carregando sistema...</p>
       </div>
     );
   }

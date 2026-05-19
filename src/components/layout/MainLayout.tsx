@@ -2,6 +2,8 @@ import { ReactNode, lazy, Suspense } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { LoadingSpinner } from '@/components/ui/loading';
+import { useAppStore } from '@/store/appStore';
+import { ColaboradorLoja } from '@/hooks/useAuth';
 
 const Dashboard = lazy(() => import('@/components/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
 const ColaboradoresPage = lazy(() => import('@/pages/ColaboradoresPage').then(m => ({ default: m.ColaboradoresPage })));
@@ -15,10 +17,6 @@ const SupervisaoFolhaPage = lazy(() => import('@/pages/SupervisaoFolhaPage').the
 const VendasDiariaPage = lazy(() => import('@/pages/VendasDiariaPage').then(m => ({ default: m.VendasDiariaPage })));
 const EstoquePage = lazy(() => import('@/pages/EstoquePage').then(m => ({ default: m.EstoquePage })));
 const AuditoriaVendasPage = lazy(() => import('@/pages/AuditoriaVendasPage').then(m => ({ default: m.AuditoriaVendasPage })));
-
-
-import { useAppStore } from '@/store/appStore';
-import { ColaboradorLoja } from '@/hooks/useAuth';
 
 interface MainLayoutProps {
   children?: ReactNode;

@@ -94,6 +94,15 @@ export const FolhaPagamentoPage = ({ gerenteLojaId, readOnly }: FolhaPagamentoPa
 
   const sortedComissoes = [...comissoes].sort((a, b) => b.comissao_base - a.comissao_base);
 
+  const totalFolha = useMemo(
+    () => sortedComissoes.reduce((sum, c) => sum + calculateFinalValue(c), 0),
+    [sortedComissoes, editedValues]
+  );
+  const totalComissoes = useMemo(
+    () => sortedComissoes.reduce((sum, c) => sum + c.comissao_base, 0),
+    [sortedComissoes]
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -121,6 +130,32 @@ export const FolhaPagamentoPage = ({ gerenteLojaId, readOnly }: FolhaPagamentoPa
           )}
         </div>
       </div>
+
+      {!isLoading && sortedComissoes.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Folha</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(totalFolha)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{sortedComissoes.length} colaboradores</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Comissões</p>
+              <p className="text-xl font-bold text-primary">{formatCurrency(totalComissoes)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{totalFolha > 0 ? ((totalComissoes / totalFolha) * 100).toFixed(0) : 0}% da folha</p>
+            </CardContent>
+          </Card>
+          <Card className="col-span-2 sm:col-span-1">
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Média por Colaborador</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(sortedComissoes.length > 0 ? totalFolha / sortedComissoes.length : 0)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">valor líquido</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {isLoading ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">Carregando...</CardContent></Card>
@@ -231,6 +266,19 @@ export const FolhaPagamentoPage = ({ gerenteLojaId, readOnly }: FolhaPagamentoPa
                     </Collapsible>
                   );
                 })}
+                <TableRow className="border-t-2 border-border bg-muted/20 font-bold">
+                  <TableCell />
+                  <TableCell className="text-xs sm:text-sm">TOTAL ({sortedComissoes.length})</TableCell>
+                  <TableCell className="text-right text-primary text-xs sm:text-sm">{formatCurrency(totalComissoes)}</TableCell>
+                  <TableCell className="text-right text-xs sm:text-sm hidden md:table-cell">—</TableCell>
+                  <TableCell className="text-right text-xs sm:text-sm">—</TableCell>
+                  <TableCell className="text-right text-xs sm:text-sm hidden lg:table-cell">—</TableCell>
+                  <TableCell className="text-right text-xs sm:text-sm hidden lg:table-cell">—</TableCell>
+                  <TableCell className="text-right text-xs sm:text-sm hidden md:table-cell">—</TableCell>
+                  <TableCell className="text-right text-xs sm:text-sm">—</TableCell>
+                  <TableCell className="text-right text-xs sm:text-sm">—</TableCell>
+                  <TableCell className="text-right font-bold text-green-500 text-sm sm:text-base">{formatCurrency(totalFolha)}</TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </CardContent>

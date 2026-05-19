@@ -8,6 +8,7 @@ import { AuthPage } from "@/pages/AuthPage";
 import { useAppStore } from "@/store/appStore";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingSpinner } from "@/components/ui/loading";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 const queryClient = new QueryClient();
 
@@ -52,7 +53,9 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>

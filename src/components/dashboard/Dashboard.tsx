@@ -25,6 +25,7 @@ import { VendasDiariasChart } from './VendasDiariasChart';
 import { SmartServicosChart } from './SmartServicosChart';
 import { DailyStoreSalesCards } from './DailyStoreSalesCards';
 import { LojaComparativoTable } from './LojaComparativoTable';
+import { HistoricoLojaChart } from './HistoricoLojaChart';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -576,6 +577,9 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
           <SmartServicosChart key={lojaId} lojaId={lojaId} mes={selectedMes} dataInicio={dataInicioStr} dataFim={dataFimStr} />
         ))
       )}
+
+      {/* Histórico 6 meses */}
+      <HistoricoLojaChart selectedMes={selectedMes} lojaId={effectiveLoja} />
 
       {/* Comparativo de Lojas (só quando todas as lojas estão selecionadas) */}
       {!effectiveLoja && (

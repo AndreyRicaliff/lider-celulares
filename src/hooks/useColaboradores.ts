@@ -328,8 +328,9 @@ export const useAtualizarParcelasDividas = () => {
       queryClient.invalidateQueries({ queryKey: ['dividas'] });
       queryClient.invalidateQueries({ queryKey: ['supervisores'] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Erro ao atualizar parcelas de dívidas:', error);
+      toast.error('Erro ao atualizar parcelas de dívidas: ' + (error?.message || 'tente novamente'));
     },
   });
 };

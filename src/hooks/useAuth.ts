@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type AppRole = 'admin' | 'colaborador' | 'supervisao';
 type CargoTipo = 'Gerente' | 'Vendedor' | 'VR' | 'Trainee';
@@ -96,6 +97,7 @@ export const useAuth = () => {
 
       if (error) {
         console.error('Error fetching role:', error);
+        toast.error('Erro ao carregar permissões do usuário. Tente recarregar a página.');
         setRole(null);
         setColaboradorId(null);
         setColaboradorLojaId(null);
@@ -135,6 +137,7 @@ export const useAuth = () => {
       }
     } catch (error) {
       console.error('Error:', error);
+      toast.error('Erro de autenticação. Tente recarregar a página.');
       setRole(null);
       setColaboradorId(null);
       setColaboradorLojaId(null);

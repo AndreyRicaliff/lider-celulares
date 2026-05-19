@@ -159,6 +159,7 @@ export const useSaveComissoes = () => {
         
         if (readError) {
           console.error('Erro ao ler dívidas para atualização:', readError);
+          toast.error('Erro ao ler dívidas: ' + readError.message);
         }
 
         const pagasPorId = new Map<string, number>();
@@ -176,6 +177,7 @@ export const useSaveComissoes = () => {
 
           if (updateError) {
             console.error('Erro ao atualizar parcela da dívida:', updateError);
+            toast.error('Erro ao atualizar parcela de dívida: ' + updateError.message);
           }
         });
 

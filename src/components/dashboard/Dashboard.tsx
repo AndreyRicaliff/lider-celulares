@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/store/appStore';
 import { useVendas } from '@/hooks/useVendas';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useComissoes } from '@/hooks/useComissoes';
+import { calculateCommissionsForLoja } from '@/lib/batchCalculateCommissions';
 import { useColaboradores } from '@/hooks/useColaboradores';
 import { useConfiguracao, useAllConfiguracoes } from '@/hooks/useConfiguracoes';
 import { useVendasDiarias } from '@/hooks/useVendasDiarias';
@@ -50,6 +52,30 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
   const { data: allConfigs } = useAllConfiguracoes(selectedMes);
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const queryClient = useQueryClient();
+  const autoCalcTriggered = useRef(false);
+
+  // Auto-calculate commissions when admin loads dashboard with vendas but no commissions
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (loadingVendas || loadingComissoes) return;
+    if (autoCalcTriggered.current) return;
+    const hasVendas = (vendas?.length ?? 0) > 0;
+    const hasComissoes = (comissoes?.length ?? 0) > 0;
+    if (!hasVendas || hasComissoes) return;
+
+    autoCalcTriggered.current = true;
+    toast.info('Calculando comissões automaticamente...');
+    Promise.allSettled(
+      LOJAS_IDS.map(lid => calculateCommissionsForLoja(lid, selectedMes))
+    ).then(results => {
+      const total = results.reduce((sum, r) => sum + (r.status === 'fulfilled' ? r.value.count : 0), 0);
+      if (total > 0) {
+        toast.success(`${total} folhas de comissão calculadas.`);
+        queryClient.invalidateQueries({ queryKey: ['comissoes'] });
+      }
+    });
+  }, [isAdmin, loadingVendas, loadingComissoes, vendas, comissoes, selectedMes, queryClient]);
 
   const registeredNames = useMemo(() => {
     const names = new Set(colaboradores?.map(c => c.nome.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")) || []);

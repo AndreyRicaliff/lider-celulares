@@ -330,9 +330,9 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
         toast.success(`${totalSynced} vendas sincronizadas da Tenfront.`);
       }
       
-      // Auto-recalculate commissions for all lojas with synced data
-      if (!readOnly && totalSynced > 0) {
-        const lojasComDados = results.filter(r => (r.synced || 0) > 0).map(r => r.loja_id);
+      // Auto-recalculate commissions for all lojas that had data (even if already synced)
+      if (!readOnly && !data?.skipped) {
+        const lojasComDados = results.filter(r => !r.error).map(r => r.loja_id);
         // Run in background — no await so UI isn't blocked
         Promise.allSettled(
           lojasComDados.map(lid => calculateCommissionsForLoja(lid, selectedMes))

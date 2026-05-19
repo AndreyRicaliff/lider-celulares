@@ -75,7 +75,7 @@ export const SyncStatusBar = () => {
         {limitedCount > 0 && (
           <span className="ml-auto text-[10px] text-amber-400/70 flex items-center gap-1">
             <Clock size={10} />
-            {limitedCount} loja{limitedCount > 1 ? 's' : ''} retoma{limitedCount > 1 ? 'm' : ''} à meia-noite
+            {limitedCount} loja{limitedCount > 1 ? 's' : ''} retoma{limitedCount > 1 ? 'm' : ''} às 21h (reset UTC)
           </span>
         )}
       </div>

@@ -14,12 +14,23 @@ export const useSyncStatus = () => {
   return useQuery({
     queryKey: ['sync-status-today'],
     queryFn: async (): Promise<LojaSync[]> => {
-      const todayUTC = new Date().toISOString().split('T')[0];
+      // "Hoje" em Brasília (UTC-3): meia-noite BRT = 03:00 UTC
+      const now = new Date();
+      const brtMidnight = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        3, 0, 0, 0  // 03:00 UTC = 00:00 BRT
+      ));
+      // Se ainda não passou das 03:00 UTC (antes da meia-noite BRT), recua um dia
+      if (now.getUTCHours() < 3) {
+        brtMidnight.setUTCDate(brtMidnight.getUTCDate() - 1);
+      }
 
       const { data, error } = await supabase
         .from('sync_logs')
         .select('loja_id, success, error_message, created_at')
-        .gte('created_at', `${todayUTC}T00:00:00`)
+        .gte('created_at', brtMidnight.toISOString())
         .order('created_at', { ascending: true });
 
       if (error) throw error;

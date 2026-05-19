@@ -386,16 +386,29 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
     'Consumer-secret': loja.consumerSecret,
   };
 
-  // Filtro de data: restringe a API ao mês alvo, reduzindo páginas retornadas
+  // Filtro de data: quando há lastSyncDate, busca só desde 1 dia antes (buffer de segurança)
+  // para não re-buscar o mês inteiro a cada sync — reduz chamadas de API ~10-20x.
   const dateFilter: Record<string, string> = {};
   if (mesAlvo && !forceAll) {
     const [year, month] = mesAlvo.split('-').map(Number);
-    const firstDay = new Date(Date.UTC(year, month - 1, 1));
     const today = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
-    dateFilter['data-inicial'] = `${pad(firstDay.getUTCDate())}/${pad(firstDay.getUTCMonth() + 1)}/${firstDay.getUTCFullYear()}`;
+
+    let startDate: Date;
+    if (lastSyncDate) {
+      // Start from 1 day before last known date as safety buffer
+      startDate = new Date(lastSyncDate + 'T00:00:00Z');
+      startDate.setUTCDate(startDate.getUTCDate() - 1);
+      // Never go before the first day of the target month
+      const firstDay = new Date(Date.UTC(year, month - 1, 1));
+      if (startDate < firstDay) startDate = firstDay;
+    } else {
+      startDate = new Date(Date.UTC(year, month - 1, 1));
+    }
+
+    dateFilter['data-inicial'] = `${pad(startDate.getUTCDate())}/${pad(startDate.getUTCMonth() + 1)}/${startDate.getUTCFullYear()}`;
     dateFilter['data-final'] = `${pad(today.getDate())}/${pad(today.getMonth() + 1)}/${today.getFullYear()}`;
-    console.log(`[${loja.id}] Filtro de data: ${dateFilter['data-inicial']} a ${dateFilter['data-final']}`);
+    console.log(`[${loja.id}] Filtro de data: ${dateFilter['data-inicial']} a ${dateFilter['data-final']} (lastSync: ${lastSyncDate ?? 'nenhum'})`);
   }
 
   console.log(`[${loja.id}] Tenfront: Buscando página 1...`);

@@ -132,13 +132,11 @@ const verificarMetaBatida = (
     const totalSemGeral = valorSmartphones + valorServicos + 
       vendasLoja.reduce((t, v) => t + (v.detalhes['ACESSÓRIOS'] || 0) + (v.detalhes['CASES'] || 0) + 
                                       (v.detalhes['PELÍCULA'] || 0) + (v.detalhes['ASSISTÊNCIA TÉCNICA'] || 0), 0);
-    console.log(`[Meta Prata] ${lojaId}: total=${totalSemGeral.toFixed(2)}, meta=${metaPrata}, bateu=${totalSemGeral >= metaPrata}`);
     return totalSemGeral >= metaPrata;
   } else {
     // Campina/Natal: usar gerente_meta_prata (smartphones + serviços)
     const metaPrata = config.gerente_meta_prata || 50000;
     const totalParaMeta = valorSmartphones + valorServicos;
-    console.log(`[Meta Prata] ${lojaId}: smartphones=${valorSmartphones.toFixed(2)}, servicos=${valorServicos.toFixed(2)}, total=${totalParaMeta.toFixed(2)}, meta=${metaPrata}, bateu=${totalParaMeta >= metaPrata}`);
     return totalParaMeta >= metaPrata;
   }
 };
@@ -162,14 +160,12 @@ const verificarSuperMetaBatida = (
     const totalSemGeralSemServicos = valorSmartphones + 
       vendasLoja.reduce((t, v) => t + (v.detalhes['ACESSÓRIOS'] || 0) + (v.detalhes['CASES'] || 0) + 
                                       (v.detalhes['PELÍCULA'] || 0) + (v.detalhes['ASSISTÊNCIA TÉCNICA'] || 0), 0);
-    console.log(`[Meta Ouro] ${lojaId}: total=${totalSemGeralSemServicos.toFixed(2)}, meta=${metaOuro}, bateu=${totalSemGeralSemServicos >= metaOuro}`);
     return totalSemGeralSemServicos >= metaOuro;
   } else {
     // Campina/Natal: meta ouro = meta prata + acréscimo (APENAS smartphones)
     const metaPrata = config.gerente_meta_prata || 50000;
     const acrescimo = config.gerente_meta_ouro_acrescimo || 10;
     const metaOuro = metaPrata * (1 + acrescimo / 100);
-    console.log(`[Meta Ouro] ${lojaId}: smartphones=${valorSmartphones.toFixed(2)}, meta=${metaOuro.toFixed(2)}, bateu=${valorSmartphones >= metaOuro}`);
     return valorSmartphones >= metaOuro;
   }
 };

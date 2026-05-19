@@ -355,7 +355,6 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
       // Se o mês selecionado não é o mês atual, fixar a data no último dia do mês selecionado
       if (selectedMes !== currentMonthStr) {
         hoje = format(monthEnd, 'yyyy-MM-dd');
-        console.log(`Upload para mês retroativo (${selectedMes}). Ajustando data para o último dia: ${hoje}`);
       } else if (hoje > format(monthEnd, 'yyyy-MM-dd')) {
         // Se a data calculada (hoje) for maior que o último dia do mês selecionado (mesmo sendo mês atual)
         hoje = format(monthEnd, 'yyyy-MM-dd');
@@ -814,8 +813,6 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
         // Priorizar loja_meta_ouro se estiver configurada, senão calcular
         const metaOuro = configRecord.loja_meta_ouro || (metaPrata * (1 + acrescimoOuro / 100));
         
-        console.log(`[Store Meta Calculation] Loja: ${lojaId}, Smartphones: ${valorSmartphones}, Meta Prata: ${metaPrata}, Meta Ouro: ${metaOuro}`);
-        
         // Verificar Meta Prata primeiro (Smartphones + Serviços)
         const batiuMetaPrata = valorParaMetaPrata >= metaPrata;
         // Meta Ouro: apenas smartphones deve atingir a meta
@@ -934,8 +931,6 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
               || Object.entries(vendasPorVendedor).find(([k]) => k.trim().toUpperCase() === nomeGerente.toUpperCase())?.[1]
               || [];
             
-            console.log(`[Gerente Serviços Pessoais] Nome: "${nomeGerente}", Vendas encontradas: ${vendasPessoaisGerente.length}, Keys no vendasPorVendedor:`, Object.keys(vendasPorVendedor));
-            
             vendasPessoaisGerente.forEach((venda: Record<string, number>) => {
               Object.entries(venda).forEach(([coluna, valor]) => {
                 const key = coluna.trim().toUpperCase();
@@ -947,7 +942,6 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
               });
             });
             
-            console.log(`[Gerente Serviços Pessoais] Total serviços pessoais: R$ ${servicosPessoaisGerente.toFixed(2)}, Comissão 12%: R$ ${(servicosPessoaisGerente * 0.12).toFixed(2)}`);
           }
           
           const comissaoServicoPessoal = servicosPessoaisGerente * 0.12;

@@ -453,8 +453,9 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
       
       // Recalcular comissões automaticamente após salvar as vendas
       await calculateCommissions();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar:', error);
+      toast.error('Erro ao salvar vendas: ' + (error?.message || 'tente novamente'));
     }
   };
 

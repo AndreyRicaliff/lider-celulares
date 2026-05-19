@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo } from 'react';
 import { BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
 import { ConfiguracaoData } from '@/hooks/useConfiguracoes';
 import { getDiasUteisNoMes, getDiasUteisDecorridos, getDiasDecorridosNoMes } from '@/lib/dateUtils';
+import { computeValForMeta } from '@/lib/metaUtils';
 
 interface LojaComparativoTableProps {
   selectedMes: string;
@@ -22,21 +21,6 @@ interface LojaComparativoTableProps {
     [key: string]: any;
   }>;
   vendasDiarias: VendaDiaria[];
-}
-
-function computeValForMeta(v: VendaDiaria): number {
-  const d = (v.detalhes || {}) as Record<string, number>;
-  const smVal = (Number(d['BONIFICADO LC']) || 0) + (Number(d['SUPER BONIFICADO']) || 0) + (Number(d['ANATEL']) || 0);
-  const accVal = (Number(d['ACESSÓRIOS']) || 0) + (Number(d['CASES']) || 0);
-  const pelVal = Number(d['PELÍCULA']) || 0;
-  const svcVal = (Number(d['PROTEÇÃO LÍDER']) || 0) + (Number(d['GARANTIA ESTENDIDA']) || 0);
-  const atVal = Number(d['ASSISTÊNCIA TÉCNICA']) || 0;
-  const gerVal = Number(d['GERAL']) || 0;
-
-  if (v.loja_id === 'soledade') return smVal + accVal + pelVal + atVal + gerVal;
-  if (v.loja_id === 'monteiro') return smVal + accVal + pelVal + svcVal + atVal + gerVal;
-  if (isLojaCampinaNatal(v.loja_id)) return smVal + svcVal;
-  return (Number(d['VALOR REAL (S/ JUROS)']) || 0) || (smVal + accVal + pelVal + atVal + gerVal);
 }
 
 export const LojaComparativoTable = ({

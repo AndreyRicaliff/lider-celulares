@@ -7,6 +7,7 @@ import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
 import { getDiasUteisNoMes, getDiasUteisDecorridos, getDiasDecorridosNoMes } from '@/lib/dateUtils';
 import { getDaysInMonth } from '@/lib/formatters';
 import { VendaDiaria } from '@/types/database';
+import { computeValForMeta } from '@/lib/metaUtils';
 
 const ALERT_THRESHOLD = 0.70;
 
@@ -15,22 +16,6 @@ function getMetaOuro(lojaId: string, numericConfig: Record<string, number>): num
   if (lojaId === 'monteiro') return numericConfig.loja_meta_prata || 50000;
   if (isLojaCampinaNatal(lojaId)) return numericConfig.gerente_meta_prata || 0;
   return numericConfig.loja_meta_ouro || 0;
-}
-
-function computeValForMeta(v: VendaDiaria): number {
-  const d = (v.detalhes || {}) as Record<string, number>;
-  const smVal = (Number(d['BONIFICADO LC']) || 0) + (Number(d['SUPER BONIFICADO']) || 0) + (Number(d['ANATEL']) || 0);
-  const accVal = (Number(d['ACESSÓRIOS']) || 0) + (Number(d['CASES']) || 0);
-  const pelVal = Number(d['PELÍCULA']) || 0;
-  const svcVal = (Number(d['PROTEÇÃO LÍDER']) || 0) + (Number(d['GARANTIA ESTENDIDA']) || 0);
-  const atVal = Number(d['ASSISTÊNCIA TÉCNICA']) || 0;
-  const gerVal = Number(d['GERAL']) || 0;
-  const valorRealSjuros = Number(d['VALOR REAL (S/ JUROS)']) || 0;
-
-  if (v.loja_id === 'soledade') return smVal + accVal + pelVal + atVal + gerVal;
-  if (v.loja_id === 'monteiro') return smVal + accVal + pelVal + svcVal + atVal + gerVal;
-  if (isLojaCampinaNatal(v.loja_id)) return smVal + svcVal;
-  return valorRealSjuros || (smVal + accVal + pelVal + atVal + gerVal);
 }
 
 export const useLojaAlerts = (mes: string) => {

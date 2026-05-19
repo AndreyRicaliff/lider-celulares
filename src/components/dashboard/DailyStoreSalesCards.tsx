@@ -9,27 +9,12 @@ import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
 import { ConfiguracaoData } from '@/hooks/useConfiguracoes';
 import { getDiasUteisNoMes, getDiasUteisDecorridos, getDiasDecorridosNoMes } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { computeValForMeta } from '@/lib/metaUtils';
 
 interface DailyStoreSalesCardsProps {
   vendasDiarias: VendaDiaria[];
   selectedMes: string;
   allConfigs?: Record<string, ConfiguracaoData>;
-}
-
-function computeValForMeta(v: VendaDiaria): number {
-  const detalhes = (v.detalhes || {}) as Record<string, number>;
-  const smVal = (Number(detalhes['BONIFICADO LC']) || 0) + (Number(detalhes['SUPER BONIFICADO']) || 0) + (Number(detalhes['ANATEL']) || 0);
-  const accSemPelVal = (Number(detalhes['ACESSÓRIOS']) || 0) + (Number(detalhes['CASES']) || 0);
-  const pelVal = Number(detalhes['PELÍCULA']) || 0;
-  const svcVal = (Number(detalhes['PROTEÇÃO LÍDER']) || 0) + (Number(detalhes['GARANTIA ESTENDIDA']) || 0);
-  const atVal = Number(detalhes['ASSISTÊNCIA TÉCNICA']) || 0;
-  const catGerVal = (Number(detalhes['GERAL']) || Number((v as any).geral) || 0);
-  const valorRealSjuros = Number(detalhes['VALOR REAL (S/ JUROS)']) || 0;
-
-  if (v.loja_id === 'soledade') return smVal + accSemPelVal + pelVal + atVal + catGerVal;
-  if (v.loja_id === 'monteiro') return smVal + accSemPelVal + pelVal + svcVal + atVal + catGerVal;
-  if (isLojaCampinaNatal(v.loja_id)) return smVal + svcVal;
-  return valorRealSjuros || (smVal + accSemPelVal + pelVal + atVal + catGerVal);
 }
 
 export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }: DailyStoreSalesCardsProps) => {
@@ -107,12 +92,10 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
     return result;
   }, [vendasDiarias, today, isCurrentMonth]);
 
-  const getGoalInfo = (lojaId: string, accumulated: number, targetDate: string | null) => {
-    const fallback = { dailyGoal: 3800, projected: null as number | null, metaOuro: 0 };
-    if (!allConfigs || !allConfigs[lojaId] || !targetDate) return fallback;
+  const getDailyGoal = (lojaId: string, accumulated: number, targetDate: string | null) => {
+    if (!allConfigs || !allConfigs[lojaId] || !targetDate) return 3800;
 
-    const config = allConfigs[lojaId];
-    const { numericConfig, diasFechamento } = config;
+    const { numericConfig, diasFechamento } = allConfigs[lojaId];
     const isSoledadeMonteiro = isLojaSoledadeMonteiro(lojaId);
 
     const diasTotais = isSoledadeMonteiro
@@ -123,10 +106,6 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
       ? getDiasUteisDecorridos(selectedMes, diasFechamento, false, targetDate)
       : getDiasDecorridosNoMes(selectedMes, targetDate, diasFechamento, false);
 
-    const diasDecorridosComHoje = isSoledadeMonteiro
-      ? getDiasUteisDecorridos(selectedMes, diasFechamento, true, targetDate)
-      : getDiasDecorridosNoMes(selectedMes, targetDate, diasFechamento, true);
-
     const diasRestantes = Math.max(1, diasTotais - diasDecorridos);
 
     let metaOuro = 0;
@@ -135,14 +114,8 @@ export const DailyStoreSalesCards = ({ vendasDiarias, selectedMes, allConfigs }:
     else if (isLojaCampinaNatal(lojaId)) metaOuro = numericConfig.gerente_meta_prata || 0;
     else metaOuro = numericConfig.loja_meta_ouro || 0;
 
-    const remainingGoal = Math.max(0, metaOuro - accumulated);
-    const dailyGoal = remainingGoal / diasRestantes;
-
-    return { dailyGoal, metaOuro, projected: diasDecorridosComHoje > 0 ? null : null };
+    return Math.max(0, metaOuro - accumulated) / diasRestantes;
   };
-
-  const getDailyGoal = (lojaId: string, accumulated: number, targetDate: string | null) =>
-    getGoalInfo(lojaId, accumulated, targetDate).dailyGoal;
 
   const getProjection = (lojaId: string, totalSoFar: number, targetDate: string | null) => {
     if (!allConfigs || !allConfigs[lojaId] || !targetDate || !isCurrentMonth) return null;

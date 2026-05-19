@@ -21,6 +21,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Pencil, Trash2, Key, ChevronDown, ChevronRight, Shield, ShieldCheck, ShieldAlert, User, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { Colaborador, ColaboradorComDividas, CargoTipo } from '@/types/database';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +87,8 @@ interface LoginInfo {
 }
 
 export const ColaboradoresPage = () => {
+  const { ask: askConfirm, confirmDialogProps } = useConfirmDialog();
+
   const [selectedLoja, setSelectedLoja] = useState<string>('');
   const [expandedLojas, setExpandedLojas] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -396,15 +400,20 @@ export const ColaboradoresPage = () => {
     }
   };
 
-  const handleDeleteSupervisor = async (sup: { id: string; user_id: string; email: string }) => {
-    if (!confirm(`Deseja excluir o login de supervisão "${sup.email}"?`)) return;
-    try {
-      await deleteUser(sup.user_id);
-      toast.success('Supervisão excluída com sucesso!');
-      fetchSupervisores();
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao excluir');
-    }
+  const handleDeleteSupervisor = (sup: { id: string; user_id: string; email: string }) => {
+    askConfirm(
+      `Deseja excluir o login de supervisão "${sup.email}"?`,
+      async () => {
+        try {
+          await deleteUser(sup.user_id);
+          toast.success('Supervisão excluída com sucesso!');
+          fetchSupervisores();
+        } catch (error: any) {
+          toast.error(error.message || 'Erro ao excluir');
+        }
+      },
+      { title: 'Excluir supervisão', confirmLabel: 'Excluir', destructive: true }
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -521,10 +530,12 @@ export const ColaboradoresPage = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este colaborador?')) {
-      await deleteColaborador.mutateAsync(id);
-    }
+  const handleDelete = (id: string) => {
+    askConfirm(
+      'Tem certeza que deseja excluir este colaborador? Esta ação não pode ser desfeita.',
+      async () => { await deleteColaborador.mutateAsync(id); },
+      { title: 'Excluir colaborador', confirmLabel: 'Excluir', destructive: true }
+    );
   };
 
 
@@ -1004,6 +1015,7 @@ export const ColaboradoresPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog {...confirmDialogProps} />
     </div>
   );
 };

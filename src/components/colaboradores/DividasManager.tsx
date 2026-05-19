@@ -12,6 +12,8 @@ import { formatCurrency } from '@/lib/formatters';
 import { LOJAS, LOJAS_IDS } from '@/lib/constants';
 import { Divida, Colaborador } from '@/types/database';
 import { useCreateDivida, useDeleteDivida } from '@/hooks/useColaboradores';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 interface DividasManagerProps {
   colaborador: Colaborador;
@@ -22,10 +24,12 @@ interface DividasManagerProps {
 const ITEMS_PER_PAGE = 5;
 
 export const DividasManager = ({ colaborador, dividas, selectedLoja }: DividasManagerProps) => {
+  const { ask: askConfirm, confirmDialogProps } = useConfirmDialog();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentPageAbertas, setCurrentPageAbertas] = useState(1);
   const [currentPagePagas, setCurrentPagePagas] = useState(1);
-  
+
   const createDivida = useCreateDivida();
   const deleteDivida = useDeleteDivida();
   
@@ -178,9 +182,11 @@ export const DividasManager = ({ colaborador, dividas, selectedLoja }: DividasMa
             variant="ghost" 
             size="sm" 
             onClick={() => {
-              if (confirm('Deseja realmente excluir esta dívida?')) {
-                deleteDivida.mutate(divida.id);
-              }
+              askConfirm(
+                'Deseja realmente excluir esta dívida?',
+                () => deleteDivida.mutate(divida.id),
+                { title: 'Excluir dívida', confirmLabel: 'Excluir', destructive: true }
+              );
             }}
             className="ml-2"
             title={isPaga ? "Excluir dívida quitada" : "Excluir dívida"}
@@ -371,13 +377,17 @@ export const DividasManager = ({ colaborador, dividas, selectedLoja }: DividasMa
                     variant="outline" 
                     size="sm" 
                     className="text-[10px] h-7 text-destructive hover:bg-destructive/10"
-                    onClick={async () => {
-                      if (confirm(`Deseja excluir TODAS as ${dividasPagas.length} dívidas quitadas? Esta ação não pode ser desfeita.`)) {
-                        for (const d of dividasPagas) {
-                          await deleteDivida.mutateAsync(d.id);
-                        }
-                        toast.success('Dívidas quitadas excluídas com sucesso');
-                      }
+                    onClick={() => {
+                      askConfirm(
+                        `Deseja excluir TODAS as ${dividasPagas.length} dívidas quitadas? Esta ação não pode ser desfeita.`,
+                        async () => {
+                          for (const d of dividasPagas) {
+                            await deleteDivida.mutateAsync(d.id);
+                          }
+                          toast.success('Dívidas quitadas excluídas com sucesso');
+                        },
+                        { title: 'Excluir dívidas quitadas', confirmLabel: 'Excluir Todas', destructive: true }
+                      );
                     }}
                   >
                     <Trash2 size={12} className="mr-1" />
@@ -402,5 +412,6 @@ export const DividasManager = ({ colaborador, dividas, selectedLoja }: DividasMa
         </Tabs>
       </DialogContent>
     </Dialog>
+    <ConfirmDialog {...confirmDialogProps} />
   );
 };

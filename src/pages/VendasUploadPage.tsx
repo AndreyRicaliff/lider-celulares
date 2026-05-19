@@ -25,6 +25,8 @@ import { Json } from '@/integrations/supabase/types';
 import { supabase } from '@/integrations/supabase/client';
 import { AnaliseMetasModal } from '@/components/vendas/AnaliseMetasModal';
 import { PreVisualizacaoVendas } from '@/components/vendas/PreVisualizacaoVendas';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { format, lastDayOfMonth, parse, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 
 interface StagedRow {
@@ -47,6 +49,8 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
   const isTenfrontLoja = false; // Natal Tenfront desabilitada
   const isNatalUnificada = false; // Desabilitada - Natal usa apenas upload
   
+  const { ask: askConfirm, confirmDialogProps } = useConfirmDialog();
+
   const [stagedData, setStagedData] = useState<StagedRow[]>([]);
   const [stagedDataTenfront, setStagedDataTenfront] = useState<StagedRow[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -326,20 +330,19 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
     }
   };
 
-  const saveData = async () => {
+  const saveData = () => {
     const dataParaSalvar = hasSegundoUpload && stagedDataTenfront.length > 0
       ? combinedData
       : stagedData;
-      
+
     if (dataParaSalvar.length === 0) {
       toast.warning('Não há dados para salvar');
       return;
     }
 
-    if (!confirm(`Substituir TODOS os dados de vendas de ${LOJAS[lojaId as keyof typeof LOJAS]} para ${selectedMes}?`)) {
-      return;
-    }
-
+    askConfirm(
+      `Substituir TODOS os dados de vendas de ${LOJAS[lojaId as keyof typeof LOJAS]} para ${selectedMes}?`,
+      async () => {
     try {
       const now = new Date();
       const todayAtNoon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
@@ -457,6 +460,9 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
       console.error('Erro ao salvar:', error);
       toast.error('Erro ao salvar vendas: ' + (error?.message || 'tente novamente'));
     }
+      },
+      { title: 'Substituir dados de vendas', confirmLabel: 'Substituir', destructive: true }
+    );
   };
 
   const calculateCommissions = async () => {
@@ -1345,6 +1351,7 @@ export const VendasUploadPage = ({ gerenteLojaId, readOnly, isVendedor }: Vendas
             : getDefaultConfig(lojaId) as Record<string, number>,
         }}
       />
+      <ConfirmDialog {...confirmDialogProps} />
     </div>
   );
 };

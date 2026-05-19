@@ -427,16 +427,8 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
 
   console.log(`[${loja.id}] Tenfront: ${totalPages} páginas identificadas, p1: ${allRecords.length} registros`);
 
-  // Otimização: se a página 1 não tem nada mais novo que o último sync, pula o sync inteiro.
-  // Retorna [] para que syncLoja detecte mappedRows.length === 0 e não execute o DELETE + INSERT.
-  if (lastSyncDate && !forceAll) {
-    const p1dates = (firstData.Response || []).map((r: Atendimento) => parseDate(r.Data)?.isoDate).filter(Boolean) as string[];
-    const newestInP1 = p1dates.sort().reverse()[0];
-    if (newestInP1 && newestInP1 < lastSyncDate) {
-      console.log(`[${loja.id}] Página 1 não tem novidades (newest: ${newestInP1}, lastSync: ${lastSyncDate}). Pulando sync.`);
-      return { records: [], wasPartial: false };
-    }
-  }
+  // Removed page-1 skip optimization: if API returns ascending order (oldest first),
+  // today's records are on the last page and the check caused them to be silently skipped.
 
   // Se o total de páginas for > 1, buscar as demais
   for (let page = 2; page <= totalPages; page++) {
@@ -796,10 +788,11 @@ const syncLoja = async (
     };
   }
 
-  // Substituir as vendas_diarias do mês para esta loja
-  await internalClient.from('vendas_diarias').delete().eq('loja_id', loja.id).eq('mes', mes);
+  // Upsert vendas_diarias: safe against mid-sync crashes (no DELETE before INSERT)
   if (diariasPayload.length > 0) {
-    const { error } = await internalClient.from('vendas_diarias').insert(diariasPayload);
+    const { error } = await internalClient
+      .from('vendas_diarias')
+      .upsert(diariasPayload, { onConflict: 'loja_id,mes,data,vendedor_nome' });
     if (error) throw error;
   }
 
@@ -835,9 +828,11 @@ const syncLoja = async (
   }
   const vendasPayload = Array.from(vendedorTotais.values());
 
-  await internalClient.from('vendas').delete().eq('loja_id', loja.id).eq('mes', mes);
+  // Upsert vendas mensais: safe replace without destructive delete
   if (vendasPayload.length > 0) {
-    const { error } = await internalClient.from('vendas').insert(vendasPayload);
+    const { error } = await internalClient
+      .from('vendas')
+      .upsert(vendasPayload, { onConflict: 'loja_id,mes,vendedor_nome' });
     if (error) throw error;
   }
 
@@ -936,11 +931,11 @@ Deno.serve(async (req) => {
     );
 
     // Guard de intervalo mínimo (ignora se for force, dryRun ou loja específica)
+    // Usa qualquer sync (success ou parcial) para evitar que falhas parciais bloqueiem retries
     if (!force && !dryRun && !onlyLojaId) {
       const { data: lastSync } = await internalClient
         .from('sync_logs')
         .select('created_at')
-        .eq('success', true)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

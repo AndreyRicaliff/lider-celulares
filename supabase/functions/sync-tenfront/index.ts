@@ -643,7 +643,7 @@ const syncLoja = async (
       await internalClient.from('sync_logs').insert({
         loja_id: loja.id, mes, synced: 0, source_rows: 0,
         vendedores_atualizados: [], sem_colaborador: [],
-        success: false, error_message: `Saldo insuficiente: ${saldo} req restantes (mínimo ${MIN_SALDO_THRESHOLD})`,
+        success: false, error_message: `Saldo diário insuficiente: ${saldo} req restantes (mínimo ${MIN_SALDO_THRESHOLD}) — aguardando reset às 00:00 BRT`,
       });
     }
     return { loja_id: loja.id, mes, skipped: true, reason: `saldo_insuficiente (${saldo})` };

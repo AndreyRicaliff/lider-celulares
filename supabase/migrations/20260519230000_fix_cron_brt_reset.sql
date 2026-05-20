@@ -10,13 +10,19 @@
 SELECT cron.unschedule('sync-tenfront-evening');
 
 -- Reposiciona full-daily para 03:10 UTC (0:10 BRT), logo após o reset
+-- Inclui Authorization header (obrigatório) e force:true para garantir fetch completo
 SELECT cron.unschedule('sync-tenfront-full-daily');
 SELECT cron.schedule(
   'sync-tenfront-full-daily',
   '10 3 * * *',
-  $$ SELECT net.http_post(
-    url := 'https://rtbybgrvpzhaqzaouemh.supabase.co/functions/v1/sync-tenfront',
-    headers := '{"Content-Type": "application/json"}'::jsonb,
-    body := '{}'::jsonb
-  ) $$
+  $$
+  SELECT net.http_post(
+    url     := 'https://ibpcexyrxwmknrfwifyy.supabase.co/functions/v1/sync-tenfront',
+    headers := jsonb_build_object(
+      'Content-Type',  'application/json',
+      'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlicGNleHlyeHdta25yZndpZnl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMjUzNDcsImV4cCI6MjA5NDYwMTM0N30.noVxEIHwpeaSNiaaV7VG5ZzmJqJYXFrBLgh_8w_eDFY'
+    ),
+    body    := '{"force": true}'::jsonb
+  ) AS request_id
+  $$
 );

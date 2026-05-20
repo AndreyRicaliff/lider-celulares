@@ -7,7 +7,7 @@ const corsHeaders = {
 
 const TENFRONT_API_URL = 'https://api.tenfront.com.br/v1/listar-atendimentos';
 const TENFRONT_SALDO_URL = 'https://api.tenfront.com.br/v1/saldo-token';
-const MIN_INTERVAL_MINUTES = 20;
+const MIN_INTERVAL_MINUTES = 12; // Must be < cron interval (15 min) to avoid blocking every run
 const MIN_SALDO_THRESHOLD = 15;
 
 // Mapeamento: nome da API → nome canônico no sistema (por loja se necessário)
@@ -336,7 +336,7 @@ const getRequestedMonth = (req: Request, body: Record<string, unknown>): string 
   const candidate = (bodyMonth || queryMonth || '').slice(0, 7);
   if (MONTH_REGEX.test(candidate)) return candidate;
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 };
 
 // ===== Saldo de tokens =====
@@ -407,7 +407,7 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
     }
 
     dateFilter['data-inicial'] = `${pad(startDate.getUTCDate())}/${pad(startDate.getUTCMonth() + 1)}/${startDate.getUTCFullYear()}`;
-    dateFilter['data-final'] = `${pad(today.getDate())}/${pad(today.getMonth() + 1)}/${today.getFullYear()}`;
+    dateFilter['data-final'] = `${pad(today.getUTCDate())}/${pad(today.getUTCMonth() + 1)}/${today.getUTCFullYear()}`;
     console.log(`[${loja.id}] Filtro de data: ${dateFilter['data-inicial']} a ${dateFilter['data-final']} (lastSync: ${lastSyncDate ?? 'nenhum'})`);
   }
 
@@ -639,6 +639,13 @@ const syncLoja = async (
   const saldo = await checkSaldo(loja);
   if (saldo < MIN_SALDO_THRESHOLD) {
     console.warn(`[${loja.id}] Saldo insuficiente (${saldo} req). Sync abortado para preservar cota.`);
+    if (!dryRun) {
+      await internalClient.from('sync_logs').insert({
+        loja_id: loja.id, mes, synced: 0, source_rows: 0,
+        vendedores_atualizados: [], sem_colaborador: [],
+        success: false, error_message: `Saldo insuficiente: ${saldo} req restantes (mínimo ${MIN_SALDO_THRESHOLD})`,
+      });
+    }
     return { loja_id: loja.id, mes, skipped: true, reason: `saldo_insuficiente (${saldo})` };
   }
 
@@ -1044,6 +1051,13 @@ Deno.serve(async (req) => {
     for (const loja of lojas) {
       if (!force && dailyLimitedLojas.has(loja.id)) {
         console.log(`[${loja.id}] Rate limit diário já atingido hoje (BRT) — pulando até 03:00 UTC.`);
+        if (!dryRun) {
+          await internalClient.from('sync_logs').insert({
+            loja_id: loja.id, mes, synced: 0, source_rows: 0,
+            vendedores_atualizados: [], sem_colaborador: [],
+            success: false, error_message: 'Rate limit diário atingido — aguardando reset às 00:00 BRT (03:00 UTC)',
+          });
+        }
         results.push({ loja_id: loja.id, skipped: true, reason: 'daily_rate_limit_today' });
         continue;
       }

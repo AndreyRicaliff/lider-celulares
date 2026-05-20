@@ -1,7 +1,5 @@
 import { useSyncStatus } from '@/hooks/useSyncStatus';
 import { LOJAS } from '@/lib/constants';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { RefreshCw, AlertTriangle, CheckCircle2, Clock, WifiOff } from 'lucide-react';
 
 const lojaNome = (id: string) =>
@@ -9,7 +7,13 @@ const lojaNome = (id: string) =>
 
 const formatTime = (iso: string | null) => {
   if (!iso) return '—';
-  try { return format(parseISO(iso), 'HH:mm', { locale: ptBR }); } catch { return '—'; }
+  try {
+    return new Date(iso).toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch { return '—'; }
 };
 
 export const SyncStatusBar = () => {

@@ -934,6 +934,7 @@ Deno.serve(async (req) => {
 
     const dryRun = Boolean(body.dryRun);
     const force = Boolean(body.force);
+    const fullYear = Boolean(body.fullYear);
     const mes = getRequestedMonth(req, body);
     const onlyLojaId = typeof body.loja_id === 'string' ? body.loja_id : null;
 
@@ -1004,6 +1005,40 @@ Deno.serve(async (req) => {
       .gte('created_at', brtMidnight.toISOString())
       .ilike('error_message', '%diário%');
     const dailyLimitedLojas = new Set((todayFailLogs || []).map((r: { loja_id: string }) => r.loja_id));
+
+    // Full-year mode: syncs all months from Jan to (current-1), most recent first.
+    // Processes as many months as fit in a 110s budget; resumes next Sunday naturally.
+    if (fullYear && !dryRun) {
+      const startTime = Date.now();
+      const TIME_BUDGET_MS = 110_000;
+      const [yearStr] = mes.split('-');
+      const currentMonthNum = parseInt(mes.split('-')[1]);
+      const allResults: unknown[] = [];
+      let processedMonths = 0;
+
+      for (let m = currentMonthNum - 1; m >= 1; m--) {
+        if (Date.now() - startTime > TIME_BUDGET_MS) {
+          console.log(`[annual] Budget esgotado após ${processedMonths} meses.`);
+          break;
+        }
+        const targetMes = `${yearStr}-${String(m).padStart(2, '0')}`;
+        console.log(`[annual] Sync ${targetMes} (${processedMonths + 1}/${currentMonthNum - 1})`);
+        for (const loja of lojas) {
+          try {
+            const result = await syncLoja(internalClient, loja, targetMes, false, true);
+            allResults.push({ ...result, mes: targetMes });
+          } catch (err) {
+            allResults.push({ loja_id: loja.id, mes: targetMes, error: getErrorMessage(err) });
+          }
+        }
+        processedMonths++;
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, fullYear: true, year: yearStr, processedMonths, results: allResults }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     const results = [];
     for (const loja of lojas) {

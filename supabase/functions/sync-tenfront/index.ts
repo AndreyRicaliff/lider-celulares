@@ -989,19 +989,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Identify lojas that already hit their daily rate limit today — skip them to preserve quota
-    const todayUTC = new Date().toISOString().split('T')[0];
+    // Identify lojas that already hit their daily rate limit today (BRT day).
+    // Tenfront resets at midnight BRT = 03:00 UTC. Use that as the day boundary
+    // so skips lift at 03:00 UTC instead of 00:00 UTC (which caused 21h+ blocks).
+    const now = new Date();
+    const brtMidnight = new Date(Date.UTC(
+      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 3, 0, 0, 0
+    ));
+    if (now.getUTCHours() < 3) brtMidnight.setUTCDate(brtMidnight.getUTCDate() - 1);
+
     const { data: todayFailLogs } = await internalClient
       .from('sync_logs')
       .select('loja_id')
-      .gte('created_at', `${todayUTC}T00:00:00`)
+      .gte('created_at', brtMidnight.toISOString())
       .ilike('error_message', '%diário%');
     const dailyLimitedLojas = new Set((todayFailLogs || []).map((r: { loja_id: string }) => r.loja_id));
 
     const results = [];
     for (const loja of lojas) {
       if (!force && dailyLimitedLojas.has(loja.id)) {
-        console.log(`[${loja.id}] Rate limit diário já atingido hoje — pulando até meia-noite.`);
+        console.log(`[${loja.id}] Rate limit diário já atingido hoje (BRT) — pulando até 03:00 UTC.`);
         results.push({ loja_id: loja.id, skipped: true, reason: 'daily_rate_limit_today' });
         continue;
       }

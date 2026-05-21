@@ -960,6 +960,7 @@ Deno.serve(async (req) => {
     const fullYear = Boolean(body.fullYear);
     const mes = getRequestedMonth(req, body);
     const onlyLojaId = typeof body.loja_id === 'string' ? body.loja_id : null;
+    const onlyLojaIds = Array.isArray(body.loja_ids) ? (body.loja_ids as string[]) : null;
 
     const internalClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -969,7 +970,7 @@ Deno.serve(async (req) => {
 
     // Guard de intervalo mínimo (ignora se for force, dryRun ou loja específica)
     // Usa qualquer sync (success ou parcial) para evitar que falhas parciais bloqueiem retries
-    if (!force && !dryRun && !onlyLojaId) {
+    if (!force && !dryRun && !onlyLojaId && !onlyLojaIds) {
       const { data: lastSync } = await internalClient
         .from('sync_logs')
         .select('created_at')
@@ -988,11 +989,33 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Group-specific interval guard (prevents double-firing within same group)
+    if (!force && !dryRun && (onlyLojaId || onlyLojaIds)) {
+      const filterIds = onlyLojaIds ?? (onlyLojaId ? [onlyLojaId] : []);
+      const { data: lastGroupSync } = await internalClient
+        .from('sync_logs')
+        .select('created_at')
+        .in('loja_id', filterIds)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lastGroupSync) {
+        const minutesAgo = (Date.now() - new Date(lastGroupSync.created_at).getTime()) / 60000;
+        if (minutesAgo < MIN_INTERVAL_MINUTES) {
+          return new Response(
+            JSON.stringify({ skipped: true, reason: `último sync do grupo há ${minutesAgo.toFixed(1)} min (mínimo: ${MIN_INTERVAL_MINUTES} min)` }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+      }
+    }
+
     // Buscar lojas com credenciais
     let query = internalClient
       .from('lojas')
       .select('id, nome, tenfront_bearer_token, tenfront_consumer_key, tenfront_consumer_secret');
     if (onlyLojaId) query = query.eq('id', onlyLojaId);
+    else if (onlyLojaIds && onlyLojaIds.length > 0) query = query.in('id', onlyLojaIds);
     const { data: lojasData, error: lojasError } = await query;
     if (lojasError) throw lojasError;
 

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carta de Compromisso de Serviço — Lider Celulares</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --primary: #1a1a2e;
+    --accent: #4f46e5;
+    --accent-light: #818cf8;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --surface: #f8fafc;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --yellow: #b45309;
+    --yellow-bg: #fffbeb;
+    --blue-bg: #eff6ff;
+    --blue: #1d4ed8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-size: 10.5pt;
+    color: var(--text);
+    background: #fff;
+    line-height: 1.7;
+  }
+
+  @page {
+    size: A4;
+    margin: 20mm 18mm 20mm 18mm;
+  }
+
+  @media print {
+    body { font-size: 10pt; }
+    .no-break { page-break-inside: avoid; }
+    .page-break { page-break-before: always; }
+  }
+
+  .page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 40px 48px;
+  }
+
+  /* Cabeçalho */
+  .header {
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 24px;
+    margin-bottom: 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .header-left h1 {
+    font-size: 20pt;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+
+  .header-left p {
+    font-size: 10pt;
+    color: var(--muted);
+  }
+
+  .header-right {
+    text-align: right;
+    font-size: 9pt;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 8pt;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* Intro */
+  .intro {
+    background: var(--blue-bg);
+    border-left: 4px solid var(--accent);
+    padding: 18px 22px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 36px;
+    font-size: 10.5pt;
+    color: var(--blue);
+  }
+
+  .intro strong {
+    display: block;
+    font-size: 11pt;
+    margin-bottom: 6px;
+    color: var(--primary);
+  }
+
+  /* Seções */
+  .section {
+    margin-bottom: 36px;
+  }
+
+  .section-title {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 10pt;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  p {
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  /* Cards de lojas */
+  .stores-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .store-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .store-card .store-name {
+    font-weight: 600;
+    font-size: 10pt;
+    color: var(--primary);
+    margin-bottom: 2px;
+  }
+
+  .store-card .store-city {
+    font-size: 8.5pt;
+    color: var(--muted);
+  }
+
+  /* Timeline de como funciona */
+  .timeline {
+    margin-top: 14px;
+  }
+
+  .timeline-item {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+    align-items: flex-start;
+  }
+
+  .timeline-icon {
+    width: 38px;
+    height: 38px;
+    background: var(--blue-bg);
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .timeline-content strong {
+    display: block;
+    font-size: 10.5pt;
+    color: var(--primary);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .timeline-content span {
+    font-size: 9.5pt;
+    color: var(--muted);
+  }
+
+  /* Caixas de status */
+  .status-box {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    border: 1px solid;
+  }
+
+  .status-box.green {
+    background: var(--green-bg);
+    border-color: #bbf7d0;
+  }
+
+  .status-box.yellow {
+    background: var(--yellow-bg);
+    border-color: #fde68a;
+  }
+
+  .status-box .status-title {
+    font-weight: 600;
+    font-size: 10.5pt;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-box.green .status-title { color: var(--green); }
+  .status-box.yellow .status-title { color: var(--yellow); }
+
+  .status-box p {
+    font-size: 9.5pt;
+    margin: 0;
+    color: var(--text);
+  }
+
+  /* Tabela de compromissos */
+  .schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 14px;
+    font-size: 9.5pt;
+  }
+
+  .schedule-table th {
+    background: var(--primary);
+    color: #fff;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 9pt;
+    letter-spacing: 0.3px;
+  }
+
+  .schedule-table th:first-child { border-radius: 8px 0 0 0; }
+  .schedule-table th:last-child { border-radius: 0 8px 0 0; }
+
+  .schedule-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .schedule-table tr:last-child td { border-bottom: none; }
+  .schedule-table tr:nth-child(even) td { background: var(--surface); }
+
+  /* Garantias */
+  .guarantee-list {
+    list-style: none;
+    margin-top: 14px;
+  }
+
+  .guarantee-list li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 10pt;
+  }
+
+  .guarantee-list li:last-child { border-bottom: none; }
+
+  .guarantee-list .check {
+    color: var(--green);
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* Rodapé */
+  .footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8.5pt;
+    color: var(--muted);
+  }
+
+  .footer-logo {
+    font-weight: 700;
+    font-size: 10pt;
+    color: var(--accent);
+  }
+
+  /* Assinaturas */
+  .signatures {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 48px;
+  }
+
+  .sig-line {
+    border-top: 1px solid var(--primary);
+    padding-top: 8px;
+    font-size: 9pt;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .sig-name {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 10pt;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Cabeçalho -->
+  <div class="header">
+    <div class="header-left">
+      <div class="badge">Carta de Compromisso de Serviço</div>
+      <h1>Painel de Gestão de Vendas</h1>
+      <p>Lider Celulares</p>
+    </div>
+    <div class="header-right">
+      Versão 1.0<br>
+      Maio de 2026<br>
+      <strong style="color: var(--primary);">Confidencial</strong>
+    </div>
+  </div>
+
+  <!-- Introdução -->
+  <div class="intro">
+    <strong>O que é este documento?</strong>
+    Esta carta formaliza os compromissos assumidos com a Lider Celulares durante a implantação e operação do painel de gestão de vendas. Aqui você encontra o que o serviço entrega, quais garantias cobrimos e o que a sua equipe nunca precisará se preocupar.
+  </div>
+
+  <!-- Seção 1 - O que você tem -->
+  <div class="section no-break">
+    <div class="section-title">
+      <span class="num">1</span>
+      O que você tem agora
+    </div>
+
+    <p>A Lider Celulares conta com um painel de gestão online que consolida automaticamente as vendas das cinco lojas em um único lugar. Os dados chegam atualizados ao longo do dia, sem que nenhum membro da equipe precise enviar arquivos, fazer exportações ou acionar qualquer processo.</p>
+
+    <p>O resultado é visibilidade completa do negócio em tempo real, disponível de qualquer dispositivo com acesso à internet.</p>
+
+    <p><strong>Lojas conectadas ao painel:</strong></p>
+
+    <div class="stores-grid">
+      <div class="store-card">
+        <div class="store-name">Lider Celulares</div>
+        <div class="store-city">Campina Grande</div>
+      </div>
+      <div class="store-card">
+        <div class="store-name">Lider Celulares</div>
+        <div class="store-city">Natal</div>
+      </div>
+      <div class="store-card">
+        <div class="store-name">Lider Celulares</div>
+        <div class="store-city">Caruaru</div>
+      </div>
+      <div class="store-card">
+        <div class="store-name">Lider Celulares</div>
+        <div class="store-city">Monteiro</div>
+      </div>
+      <div class="store-card">
+        <div class="store-name">Lider Celulares</div>
+        <div class="store-city">Soledade</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seção 2 - Nossa garantia de qualidade -->
+  <div class="section no-break">
+    <div class="section-title">
+      <span class="num">2</span>
+      Nossa garantia de qualidade
+    </div>
+
+    <p>Nossa equipe é responsável por manter o painel funcionando de forma contínua e confiável. Isso significa que monitoramos ativamente a integridade e a atualização dos dados, sem depender de qualquer ação da equipe da Lider Celulares.</p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-icon">📊</div>
+        <div class="timeline-content">
+          <strong>Dados sempre atualizados</strong>
+          <span>O painel reflete as vendas das lojas com atualizações frequentes durante o dia, garantindo que as informações estejam disponíveis quando você precisar consultar.</span>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-icon">🔒</div>
+        <div class="timeline-content">
+          <strong>Integridade total dos dados</strong>
+          <span>Nenhuma venda registrada nas lojas é perdida. Todo o histórico desde o início do projeto está armazenado de forma segura e pode ser consultado a qualquer momento.</span>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-icon">👁️</div>
+        <div class="timeline-content">
+          <strong>Monitoramento contínuo</strong>
+          <span>O serviço é acompanhado de forma permanente. Qualquer variação é identificada e tratada antes de chegar ao seu conhecimento.</span>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-icon">✅</div>
+        <div class="timeline-content">
+          <strong>Conferência diária</strong>
+          <span>Além das atualizações ao longo do dia, realizamos uma conferência noturna de fechamento para garantir que todas as vendas do período estejam devidamente registradas.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seção 3 - Quando algo sai do esperado -->
+  <div class="section no-break page-break">
+    <div class="section-title">
+      <span class="num">3</span>
+      Quando algo sai do esperado
+    </div>
+
+    <p>Todo serviço digital pode apresentar variações pontuais. Nossa atuação garante que essas situações sejam tratadas antes de impactar a sua operação.</p>
+
+    <div style="margin-top: 18px;">
+      <div class="status-box green">
+        <div class="status-title">✅ Identificação antes de você perceber</div>
+        <p>Nossa equipe monitora o serviço de forma ativa. Se ocorrer qualquer instabilidade, ela é identificada pelos nossos sistemas e tratada imediatamente — sem que a equipe da Lider Celulares precise notar ou acionar ninguém.</p>
+      </div>
+
+      <div class="status-box green">
+        <div class="status-title">✅ Nenhuma venda é perdida</div>
+        <p>Mesmo que o painel apresente alguma demora pontual em exibir dados recentes, todas as vendas registradas nas lojas chegam ao painel. A integridade do histórico é garantida independentemente de qualquer variação no serviço.</p>
+      </div>
+
+      <div class="status-box green">
+        <div class="status-title">✅ Retomada automática sem intervenção</div>
+        <p>Em situações de instabilidade, o serviço se reestabelece de forma autônoma. Não é necessário nenhuma ação da equipe da Lider Celulares para que tudo volte ao normal.</p>
+      </div>
+
+      <div class="status-box yellow">
+        <div class="status-title">⏳ Atraso pontual na exibição de dados recentes</div>
+        <p>Em situações excepcionais, pode haver uma defasagem temporária entre a venda realizada e a sua exibição no painel. Nesses casos, os dados são regularizados automaticamente e nenhuma informação é perdida. Nossa equipe já está ciente e atuando antes que isso chegue a incomodar.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seção 4 - O que a Lider não precisa fazer -->
+  <div class="section no-break">
+    <div class="section-title">
+      <span class="num">4</span>
+      O que a Lider Celulares não precisa fazer
+    </div>
+
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th>A Lider Celulares não precisa...</th>
+          <th>Porque o serviço...</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Exportar ou enviar dados das lojas manualmente</td>
+          <td>Coleta e processa tudo de forma automática, sem intervenção humana</td>
+        </tr>
+        <tr>
+          <td>Acionar suporte quando o painel estiver lento ou sem atualização</td>
+          <td>Detecta e resolve qualquer variação antes de você perceber</td>
+        </tr>
+        <tr>
+          <td>Verificar se as vendas chegaram ao painel</td>
+          <td>Realiza conferências diárias e garante a integridade de todos os registros</td>
+        </tr>
+        <tr>
+          <td>Preocupar-se com perda de histórico</td>
+          <td>Armazena todos os dados de forma segura desde o início do projeto</td>
+        </tr>
+        <tr>
+          <td>Reiniciar ou acionar qualquer processo</td>
+          <td>Mantém o serviço em operação contínua, com retomada automática em qualquer situação</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Seção 5 - Compromissos da AG -->
+  <div class="section no-break">
+    <div class="section-title">
+      <span class="num">5</span>
+      Nossos compromissos durante a implantação
+    </div>
+
+    <p>A fase inicial de implantação conta com acompanhamento intensificado. Durante este período:</p>
+
+    <ul class="guarantee-list">
+      <li>
+        <span class="check">✔</span>
+        <span><strong>Monitoramento de perto.</strong> O funcionamento do serviço é acompanhado com atenção redobrada, assegurando que o painel opere com plena estabilidade desde os primeiros dias.</span>
+      </li>
+      <li>
+        <span class="check">✔</span>
+        <span><strong>Resolução proativa.</strong> Qualquer ajuste necessário é identificado e executado sem esperar que a Lider Celulares reporte qualquer problema.</span>
+      </li>
+      <li>
+        <span class="check">✔</span>
+        <span><strong>Comunicação transparente.</strong> Sempre que realizarmos algum ajuste relevante no serviço, a Lider Celulares será informada em linguagem clara e acessível.</span>
+      </li>
+      <li>
+        <span class="check">✔</span>
+        <span><strong>Disponibilidade.</strong> O suporte está disponível para esclarecer dúvidas durante todo o período de implantação e operação do painel.</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Seção 6 - Vigência -->
+  <div class="section no-break">
+    <div class="section-title">
+      <span class="num">6</span>
+      Vigência do acompanhamento intensivo
+    </div>
+
+    <p>O período de implantação, com acompanhamento reforçado, tem início em <strong>maio de 2026</strong>. Durante esta fase, toda variação no serviço recebe atenção prioritária e resolução imediata.</p>
+
+    <p>Ao final da implantação, o serviço passa para o regime de operação contínua, com os mesmos compromissos de qualidade, integridade de dados e monitoramento ativo descritos neste documento.</p>
+
+    <div class="status-box green" style="margin-top: 18px;">
+      <div class="status-title">✅ Painel em operação</div>
+      <p>O painel de gestão de vendas da Lider Celulares está ativo com as cinco lojas conectadas. Os dados estão sendo coletados, processados e disponibilizados de forma contínua e automática.</p>
+    </div>
+  </div>
+
+  <!-- Rodapé -->
+  <div class="footer">
+    <div>
+      Documento confidencial — uso exclusivo do cliente
+    </div>
+    <div style="text-align:right;">
+      Lider Celulares · Painel de Gestão de Vendas · 2026
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

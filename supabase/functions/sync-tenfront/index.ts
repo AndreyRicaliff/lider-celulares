@@ -831,7 +831,15 @@ const syncLoja = async (
     if (error) throw error;
   }
 
-  // Recalcular vendas mensais a partir das diárias
+  // Recalcular vendas mensais a partir de TODAS as diárias do mês no banco
+  // (não apenas do batch atual — garante que o total mensal sempre reflita o mês completo)
+  const { data: todasDiarias, error: diariasErr } = await internalClient
+    .from('vendas_diarias')
+    .select('vendedor_nome, colaborador_id, valor_total, geral, detalhes')
+    .eq('loja_id', loja.id)
+    .eq('mes', mes);
+  if (diariasErr) throw diariasErr;
+
   const vendedorTotais = new Map<string, {
     loja_id: string;
     mes: string;
@@ -839,10 +847,9 @@ const syncLoja = async (
     colaborador_id: string | null;
     detalhes: Record<string, number>;
     valor_total: number;
-    valor_bruto: number;
     geral: number;
   }>();
-  for (const row of diariasPayload) {
+  for (const row of todasDiarias || []) {
     const existing = vendedorTotais.get(row.vendedor_nome) || {
       loja_id: loja.id,
       mes,
@@ -850,14 +857,12 @@ const syncLoja = async (
       colaborador_id: row.colaborador_id,
       detalhes: {},
       valor_total: 0,
-      valor_bruto: 0,
       geral: 0,
     };
-    existing.valor_total += row.valor_total;
-    existing.valor_bruto += row.valor_bruto;
-    existing.geral += row.geral;
-    for (const [k, v] of Object.entries(row.detalhes)) {
-      existing.detalhes[k] = (existing.detalhes[k] || 0) + v;
+    existing.valor_total += Number(row.valor_total) || 0;
+    existing.geral += Number(row.geral) || 0;
+    for (const [k, v] of Object.entries(row.detalhes || {})) {
+      existing.detalhes[k] = (existing.detalhes[k] || 0) + (Number(v) || 0);
     }
     vendedorTotais.set(row.vendedor_nome, existing);
   }

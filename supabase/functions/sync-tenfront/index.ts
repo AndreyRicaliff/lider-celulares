@@ -509,6 +509,56 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
   return { records: allRecords, wasPartial, pagesFetched };
 };
 
+// ===== Atribuição de juros por categoria =====
+
+type ItemCategorizado = { valor: number; categoria: string };
+
+const findMatchingItems = (items: ItemCategorizado[], target: number, eps = 0.10): ItemCategorizado[] => {
+  // Tenta match exato de 1 item
+  const single = items.find(i => Math.abs(i.valor - target) <= eps);
+  if (single) return [single];
+  // Soma de todos os itens
+  const total = items.reduce((s, i) => s + i.valor, 0);
+  if (Math.abs(total - target) <= eps) return items;
+  // Pares
+  for (let a = 0; a < items.length; a++)
+    for (let b = a + 1; b < items.length; b++)
+      if (Math.abs(items[a].valor + items[b].valor - target) <= eps) return [items[a], items[b]];
+  // Trios
+  for (let a = 0; a < items.length; a++)
+    for (let b = a + 1; b < items.length; b++)
+      for (let c = b + 1; c < items.length; c++)
+        if (Math.abs(items[a].valor + items[b].valor + items[c].valor - target) <= eps) return [items[a], items[b], items[c]];
+  // Fallback: todos proporcional
+  return items;
+};
+
+const computeJurosPorCategoria = (
+  pagamentos: any[],
+  itensCat: ItemCategorizado[],
+): Record<string, number> => {
+  const result: Record<string, number> = {};
+  if (!pagamentos?.length || !itensCat.length) return result;
+
+  const totalItens = itensCat.reduce((s, i) => s + i.valor, 0);
+  if (totalItens <= 0) return result;
+
+  for (const p of pagamentos) {
+    const informado = safeParseNumber(p['Valor informado'] || 0);
+    const comAcrescimo = safeParseNumber(p['Valor com acréscimo'] || p['Valor informado'] || 0);
+    const juros = comAcrescimo - informado;
+    if (juros <= 0.01) continue;
+
+    const matching = findMatchingItems(itensCat.filter(i => i.valor > 0), informado);
+    const matchTotal = matching.reduce((s, i) => s + i.valor, 0) || totalItens;
+    for (const item of matching) {
+      const key = `__juros_${item.categoria}`;
+      result[key] = (result[key] || 0) + juros * (item.valor / matchTotal);
+    }
+  }
+  return result;
+};
+
 // ===== Map atendimento to venda =====
 
 const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: string }, targetMonth: string): MappedVenda | null => {
@@ -616,6 +666,14 @@ const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: string }, t
   if (qtdServicos > 0) detalhes['__qtd_servicos'] = qtdServicos;
 
   if (valorTotal <= 0 && qtdSmartphones === 0) return null;
+
+  // Calcular juros por categoria a partir do campo Pagamento
+  const itensCat: ItemCategorizado[] = Object.entries(detalhes)
+    .filter(([k]) => !k.startsWith('__'))
+    .map(([categoria, valor]) => ({ categoria, valor: valor as number }));
+  const pagamentos = (atendimento as any).Pagamento || [];
+  const jurosPorCategoria = computeJurosPorCategoria(pagamentos, itensCat);
+  Object.assign(detalhes, jurosPorCategoria);
 
   return {
     vendedor_nome: vendedorNome,
@@ -910,6 +968,7 @@ const syncLoja = async (
             return sum;
           }, 0),
           detalhes_brutos: infoAtendimento,
+          pagamento: (a as any).Pagamento || [],
           status: a.Status,
           mes: mes,
           alertas_preco: alertasPreco

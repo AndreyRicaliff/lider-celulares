@@ -5,7 +5,6 @@ import { useAppStore } from '@/store/appStore';
 import { ColaboradorLoja } from '@/hooks/useAuth';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { ColaboradoresPage } from '@/pages/ColaboradoresPage';
-import { VendasUploadPage } from '@/pages/VendasUploadPage';
 import { FolhaPagamentoPage } from '@/pages/FolhaPagamentoPage';
 import { ConfiguracoesPage } from '@/pages/ConfiguracoesPage';
 import { RelatoriosPage } from '@/pages/RelatoriosPage';
@@ -14,7 +13,6 @@ import { MeuRelatorioPage } from '@/pages/MeuRelatorioPage';
 import { SupervisaoFolhaPage } from '@/pages/SupervisaoFolhaPage';
 import { VendasDiariaPage } from '@/pages/VendasDiariaPage';
 import { EstoquePage } from '@/pages/EstoquePage';
-import { AuditoriaVendasPage } from '@/pages/AuditoriaVendasPage';
 
 interface MainLayoutProps {
   children?: ReactNode;
@@ -36,14 +34,12 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
     if (isSupervisao) {
       switch (currentView) {
         case 'dashboard': return <Dashboard />;
-        case 'vendas': return <VendasUploadPage readOnly />;
         case 'vendas-diarias': return <VendasDiariaPage />;
         case 'folha': return <FolhaPagamentoPage readOnly />;
         case 'supervisao-folha': return <SupervisaoFolhaPage />;
         case 'relatorio': return <RelatoriosPage />;
         case 'relatorios-numericos': return <RelatoriosNumericos />;
         case 'estoque': return <EstoquePage />;
-        case 'auditoria': return <AuditoriaVendasPage />;
         default: return <Dashboard />;
       }
     }
@@ -54,10 +50,8 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
         case 'relatorio': return <MeuRelatorioPage />;
         case 'folha': return <FolhaPagamentoPage gerenteLojaId={colaboradorLojaId} />;
         case 'relatorios': return <RelatoriosPage gerenteLojaId={colaboradorLojaId} />;
-        case 'vendas': return <VendasUploadPage gerenteLojaId={colaboradorLojaId} />;
         case 'vendas-diarias': return <VendasDiariaPage />;
         case 'estoque': return <EstoquePage />;
-        case 'auditoria': return <AuditoriaVendasPage />;
         default: return <Dashboard colaboradorLojaId={colaboradorLojaId} />;
       }
     }
@@ -66,10 +60,8 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
       switch (currentView) {
         case 'dashboard': return <Dashboard colaboradorLojaId={colaboradorLojaId} />;
         case 'relatorio': return <MeuRelatorioPage />;
-        case 'vendas': return <VendasUploadPage gerenteLojaId={colaboradorLojaId || undefined} readOnly isVendedor />;
         case 'vendas-diarias': return <VendasDiariaPage />;
         case 'estoque': return <EstoquePage />;
-        case 'auditoria': return <AuditoriaVendasPage />;
         default: return <Dashboard colaboradorLojaId={colaboradorLojaId} />;
       }
     }
@@ -77,7 +69,6 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
     switch (currentView) {
       case 'dashboard': return <Dashboard />;
       case 'colaboradores': return <ColaboradoresPage />;
-      case 'vendas': return <VendasUploadPage />;
       case 'vendas-diarias': return <VendasDiariaPage />;
       case 'folha': return <FolhaPagamentoPage />;
       case 'configuracoes': return <ConfiguracoesPage />;
@@ -85,7 +76,6 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
       case 'relatorios-numericos': return <RelatoriosNumericos />;
       case 'supervisao-folha': return <SupervisaoFolhaPage />;
       case 'estoque': return <EstoquePage />;
-      case 'auditoria': return <AuditoriaVendasPage />;
       default: return <Dashboard />;
     }
   };

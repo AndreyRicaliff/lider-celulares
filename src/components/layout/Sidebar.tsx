@@ -4,13 +4,12 @@ import { LOJAS, LOJAS_IDS, type LojaId } from '@/lib/constants';
 import { useAppStore } from '@/store/appStore';
 import { ColaboradorLoja } from '@/hooks/useAuth';
 import { useLojaAlerts } from '@/hooks/useLojaAlerts';
-import { 
-  Home, 
-  Users, 
-  ChevronDown, 
-  Upload, 
-  FileText, 
-  Settings, 
+import {
+  Home,
+  Users,
+  ChevronDown,
+  FileText,
+  Settings,
   BarChart3,
   Menu,
   X,
@@ -20,7 +19,6 @@ import {
   Hash,
   ArrowLeftRight,
   Package,
-  FileSearch,
 } from 'lucide-react';
 import logoLider from '@/assets/logo.jpg';
 
@@ -163,22 +161,10 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
               {colaboradorLojaId && (
                 <>
                   <NavItem
-                    icon={<Upload size={18} />}
-                    label="Produtos Vendidos"
-                    active={currentView === 'vendas'}
-                    onClick={() => handleNavigation('vendas', colaboradorLojaId)}
-                  />
-                  <NavItem
                     icon={<CalendarDays size={18} />}
                     label="Vendas Diárias"
                     active={currentView === 'vendas-diarias'}
                     onClick={() => handleNavigation('vendas-diarias', colaboradorLojaId)}
-                  />
-                  <NavItem
-                    icon={<FileSearch size={18} />}
-                    label="Auditoria Detalhada"
-                    active={currentView === 'auditoria'}
-                    onClick={() => handleNavigation('auditoria')}
                   />
                 </>
               )}
@@ -234,12 +220,6 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                 </span>
               </div>
               <NavItem
-                icon={<Upload size={18} />}
-                label="Análise de Metas"
-                active={currentView === 'vendas'}
-                onClick={() => handleNavigation('vendas', colaboradorLojaId)}
-              />
-              <NavItem
                 icon={<FileText size={18} />}
                 label="Folha de Pagamento"
                 active={currentView === 'folha'}
@@ -250,12 +230,6 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                 label="Vendas Diárias"
                 active={currentView === 'vendas-diarias'}
                 onClick={() => handleNavigation('vendas-diarias', colaboradorLojaId)}
-              />
-              <NavItem
-                icon={<FileSearch size={18} />}
-                label="Auditoria Detalhada"
-                active={currentView === 'auditoria'}
-                onClick={() => handleNavigation('auditoria')}
               />
               <NavItem
                 icon={<BarChart3 size={18} />}
@@ -296,12 +270,6 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                   />
                   {openMenus[lojaId] && (
                     <div className="ml-3 mt-1 space-y-0.5 animate-fade-in pl-2 border-l-2 border-primary/20 bg-primary/5 rounded-r-lg py-1.5">
-                      <SubNavItem
-                        icon={<Upload size={16} />}
-                        label="Lançamento de Vendas"
-                        active={currentView === 'vendas' && selectedLoja === lojaId}
-                        onClick={() => handleNavigation('vendas', lojaId)}
-                      />
                       <SubNavItem
                         icon={<CalendarDays size={16} />}
                         label="Vendas Diárias"
@@ -349,12 +317,6 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                 active={currentView === 'relatorios-numericos'}
                 onClick={() => handleNavigation('relatorios-numericos')}
               />
-              <NavItem
-                icon={<FileSearch size={18} />}
-                label="Auditoria Detalhada"
-                active={currentView === 'auditoria'}
-                onClick={() => handleNavigation('auditoria')}
-              />
             </>
           )}
 
@@ -401,12 +363,6 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                   />
                   {openMenus[lojaId] && (
                     <div className="ml-3 mt-1 space-y-0.5 animate-fade-in pl-2 border-l-2 border-primary/20 bg-primary/5 rounded-r-lg py-1.5">
-                      <SubNavItem
-                        icon={<Upload size={16} />}
-                        label="Lançamento de Vendas"
-                        active={currentView === 'vendas' && selectedLoja === lojaId}
-                        onClick={() => handleNavigation('vendas', lojaId)}
-                      />
                       <SubNavItem
                         icon={<CalendarDays size={16} />}
                         label="Vendas Diárias"
@@ -458,13 +414,7 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                 icon={<Hash size={18} />}
                 label="Relatórios Numéricos"
                 active={currentView === 'relatorios-numericos'}
-                      onClick={() => handleNavigation('relatorios-numericos')}
-                    />
-              <NavItem
-                icon={<FileSearch size={18} />}
-                label="Auditoria Detalhada"
-                active={currentView === 'auditoria'}
-                onClick={() => handleNavigation('auditoria')}
+                onClick={() => handleNavigation('relatorios-numericos')}
               />
             </>
           )}

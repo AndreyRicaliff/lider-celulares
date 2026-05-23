@@ -58,18 +58,38 @@ export const VendasDiariaPage = () => {
   }, [selectedMes]);
 
 
-  // Filter by date range
+  // Filter by date range — STRICT FILTERING
+  // ⚠️ CRITICAL: This filter MUST respect the exact date range selected.
+  // If dataInicio or dataFim are not set, ALL data from the month is shown.
+  // This is intentional: clearing date filters shows the full month.
   const filteredVendas = useMemo(() => {
     if (!vendasDiarias) return [];
     let filtered = vendasDiarias;
 
     if (dataInicio) {
       const inicioStr = format(dataInicio, 'yyyy-MM-dd');
+      // INCLUDE: data >= dataInicio
       filtered = filtered.filter(v => v.data >= inicioStr);
     }
     if (dataFim) {
       const fimStr = format(dataFim, 'yyyy-MM-dd');
+      // INCLUDE: data <= dataFim (inclusive of end date)
       filtered = filtered.filter(v => v.data <= fimStr);
+    }
+
+    // Validate: ensure no data outside the range if filters are active
+    if (dataInicio || dataFim) {
+      const firstDate = filtered.length > 0 ? filtered[0].data : null;
+      const lastDate = filtered.length > 0 ? filtered[filtered.length - 1].data : null;
+      const inicioStr = dataInicio ? format(dataInicio, 'yyyy-MM-dd') : null;
+      const fimStr = dataFim ? format(dataFim, 'yyyy-MM-dd') : null;
+
+      if (firstDate && inicioStr && firstDate < inicioStr) {
+        console.error('[CRITICAL] VendasDiariaPage: Data before start date found:', firstDate, inicioStr);
+      }
+      if (lastDate && fimStr && lastDate > fimStr) {
+        console.error('[CRITICAL] VendasDiariaPage: Data after end date found:', lastDate, fimStr);
+      }
     }
 
     return filtered;
@@ -286,9 +306,23 @@ export const VendasDiariaPage = () => {
       {/* Vendor Table */}
       <Card className="glass-card border-border/50">
         <CardHeader>
-          <CardTitle className="text-lg">
-            Resumo por Vendedor — {periodoLabel}
-          </CardTitle>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-lg">
+                Resumo por Vendedor — {periodoLabel}
+              </CardTitle>
+              {!temFiltroAtivo && (
+                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                  ⚠️ <strong>Exibindo todos os dias do mês</strong> ({selectedMes}). Use os filtros acima para um período específico.
+                </p>
+              )}
+              {temFiltroAtivo && (
+                <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                  ✓ Filtro ativo: {periodoLabel} • Apenas dados dentro desse período
+                </p>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (

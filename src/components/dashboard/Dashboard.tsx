@@ -96,7 +96,10 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
   const dataInicioStr = dataInicio ? format(dataInicio, 'yyyy-MM-dd') : undefined;
   const dataFimStr = dataFim ? format(dataFim, 'yyyy-MM-dd') : undefined;
 
-  // Vendas diárias filtradas pelo período
+  // Vendas diárias filtradas pelo período — STRICT FILTERING
+  // ⚠️ CRITICAL: When a date filter is active, ALL metrics (vendas, comissoes, totals)
+  // are calculated ONLY from data within the selected range.
+  // When no filter is active, ALL metrics show the full month's aggregated data.
   const vendasDiariasFiltradas = useMemo(() => {
     if (!temFiltroPeriodo) return [];
     return vendasDiarias.filter(v => {
@@ -452,10 +455,33 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
         />
       )}
 
+      {/* ⚠️ CRITICAL: Data Filter Warning Banner */}
+      {temFiltroAtivo && (
+        <Card className="border-green-500/30 bg-green-500/5">
+          <CardContent className="py-3 px-4 flex items-start gap-2 text-xs">
+            <span className="text-green-500 font-bold mt-0.5 flex-shrink-0">✓</span>
+            <div className="text-foreground">
+              <strong className="text-green-600">Filtro de período ativo:</strong> Exibindo dados de <strong>{dataInicio ? format(dataInicio, 'dd/MM/yyyy') : 'início'}</strong> até <strong>{dataFim ? format(dataFim, 'dd/MM/yyyy') : 'fim'}</strong>. Todas as métricas mostram APENAS dados dentro desse intervalo.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!temFiltroAtivo && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="py-3 px-4 flex items-start gap-2 text-xs">
+            <span className="text-amber-500 font-bold mt-0.5 flex-shrink-0">ℹ</span>
+            <div className="text-foreground">
+              <strong className="text-amber-600">Sem filtro de período:</strong> Exibindo dados <strong>agregados do mês inteiro</strong> ({selectedMes}). Use os filtros de data acima para visualizar um período específico.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Vendas do Dia por Loja */}
-      <DailyStoreSalesCards 
-        vendasDiarias={vendasDiarias} 
-        selectedMes={selectedMes} 
+      <DailyStoreSalesCards
+        vendasDiarias={vendasDiarias}
+        selectedMes={selectedMes}
         allConfigs={allConfigs}
       />
 

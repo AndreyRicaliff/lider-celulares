@@ -9,12 +9,24 @@ import { useAppStore } from "@/store/appStore";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const { currentView } = useAppStore();
+  const { currentView, setSelectedLoja } = useAppStore();
   const { user, loading, isAdmin, isSupervisao, isColaborador, isGerente, colaboradorLojaId, lojasDisponiveis, switchLoja, signOut } = useAuth();
+
+  // Set default selectedLoja based on user role
+  useEffect(() => {
+    if (!loading && user) {
+      if (isAdmin) {
+        setSelectedLoja('natal'); // Admin defaults to Natal
+      } else if (isGerente || isColaborador) {
+        setSelectedLoja(colaboradorLojaId || 'natal'); // Gerente/Colaborador defaults to their store
+      }
+    }
+  }, [user, loading, isAdmin, isGerente, isColaborador, colaboradorLojaId, setSelectedLoja]);
 
   if (loading) {
     return (

@@ -23,7 +23,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       currentView: 'dashboard',
-      selectedLoja: 'natal',
+      selectedLoja: null, // Set dynamically in App.tsx based on user role
       selectedMes: (() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;

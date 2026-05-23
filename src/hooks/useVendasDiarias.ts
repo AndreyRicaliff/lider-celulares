@@ -17,8 +17,10 @@ export const useVendasDiarias = (
 
   // Realtime: invalida cache quando sync escreve novos dados
   useEffect(() => {
+    // ⚠️ CRITICAL: Use a unique channel name to avoid conflicts across multiple hook instances
+    const channelName = `vendas-diarias-sync-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel('vendas-diarias-sync')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vendas_diarias' }, () => {
         queryClient.invalidateQueries({ queryKey: ['vendas_diarias'] });
         queryClient.invalidateQueries({ queryKey: ['vendas'] });

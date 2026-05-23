@@ -14,7 +14,7 @@
 import { readFileSync, existsSync, writeFileSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { createClient } from './node_modules/@supabase/supabase-js/dist/main/index.js';
+import { createClient } from '@supabase/supabase-js';
 
 const __dir   = dirname(fileURLToPath(import.meta.url));
 const LOCK    = join(__dir, '.sync-full.lock');

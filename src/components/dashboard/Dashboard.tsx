@@ -467,7 +467,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
         </Card>
       )}
 
-      {!temFiltroAtivo && (
+      {!temFiltroAtivo && selectedMes && (
         <Card className="border-amber-500/30 bg-amber-500/5">
           <CardContent className="py-3 px-4 flex items-start gap-2 text-xs">
             <span className="text-amber-500 font-bold mt-0.5 flex-shrink-0">ℹ</span>

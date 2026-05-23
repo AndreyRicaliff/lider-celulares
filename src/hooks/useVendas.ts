@@ -10,7 +10,7 @@ export const useVendas = (lojaId?: string, mes?: string, vendedor?: string) => {
     queryKey: ['vendas', lojaId, mes, vendedor],
     queryFn: async (): Promise<Venda[]> => {
       let query = supabase.from('vendas').select('*');
-      
+
       if (lojaId) {
         const lojaIds = getLojaIdsForQuery(lojaId);
         query = query.in('loja_id', lojaIds);
@@ -21,11 +21,11 @@ export const useVendas = (lojaId?: string, mes?: string, vendedor?: string) => {
       if (vendedor) {
         query = query.eq('vendedor_nome', vendedor);
       }
-      
-      
+
+
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
-      
+
       // Filtra vendedores excluídos e vendas específicas
       const filteredData = (data || []).filter(v => {
         const lojaIdVenda = lojaId || v.loja_id;

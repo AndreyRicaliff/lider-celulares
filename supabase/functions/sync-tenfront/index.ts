@@ -10,6 +10,7 @@ const TENFRONT_SALDO_URL = 'https://api.tenfront.com.br/v1/saldo-token';
 const MIN_INTERVAL_MINUTES = 27; // Must be < cron interval (30 min) to avoid blocking every run
 const MIN_SALDO_THRESHOLD = 15;
 
+
 // Mapeamento: nome da API → nome canônico no sistema (por loja se necessário)
 const VENDEDOR_NOME_OVERRIDES: Record<string, string> = {
   'lucas': 'LUCAS',
@@ -211,6 +212,15 @@ const mapGrupoToCategory = (grupo: string, produto: string, tipo = '', subtipo =
 
   // 9. FALLBACK GERAL (Pelo grupo ou regras remanescentes)
   if (gNorm.includes('geral') || gNorm.includes('vendas gerais') || gNorm.includes('outros')) {
+    // Em loja de celular, item >= R$900 sem categoria identificada é quase sempre celular.
+    // JBL, lacrados genéricos e produtos explicitamente marcados GERAL já foram capturados no step 2.
+    if (valor >= 900) {
+      console.log(`[GERAL_STEP9→PHONE] produto="${produtoUpper}" grupo="${g}" tipo="${tipoUpper}" valor=${valor} loja=${lojaIdDebug}`);
+      return classifySmartphone(produto, valor);
+    }
+    unmappedGroups.add(g);
+    unmappedProducts.add(`${produtoUpper}|tipo:${tipoUpper}|val:${valor}`);
+    console.log(`[GERAL_STEP9] produto="${produtoUpper}" grupo="${g}" tipo="${tipoUpper}" subtipo="${subtipoUpper}" valor=${valor} loja=${lojaIdDebug}`);
     return 'GERAL';
   }
 
@@ -219,6 +229,15 @@ const mapGrupoToCategory = (grupo: string, produto: string, tipo = '', subtipo =
      return 'ACESSÓRIOS';
   }
 
+  // Valor alto sem categoria → provavelmente celular não mapeado
+  if (valor >= 900) {
+    console.log(`[GERAL_FINAL→PHONE] produto="${produtoUpper}" grupo="${g}" tipo="${tipoUpper}" valor=${valor} loja=${lojaIdDebug}`);
+    return classifySmartphone(produto, valor);
+  }
+
+  unmappedGroups.add(g);
+  unmappedProducts.add(`${produtoUpper}|tipo:${tipoUpper}|val:${valor}`);
+  console.log(`[GERAL_FINAL] produto="${produtoUpper}" grupo="${g}" tipo="${tipoUpper}" subtipo="${subtipoUpper}" valor=${valor} loja=${lojaIdDebug}`);
   return 'GERAL';
 };
 
@@ -362,6 +381,21 @@ const checkSaldo = async (loja: LojaConfig): Promise<number> => {
 
 // ===== Última data sincronizada por loja =====
 
+// ID do atendimento mais recente já salvo em atendimentos_audit para esta loja/mês.
+// Usado como âncora de ID: assim que a API retorna esse ID numa página, paramos —
+// todos os registros seguintes já estão no banco. Reduz Natal de 6-7 páginas para ~1.
+const getLastSyncedAtendimentoId = async (internalClient: any, lojaId: string, mes: string): Promise<string | null> => {
+  const { data } = await internalClient
+    .from('atendimentos_audit')
+    .select('atendimento_id')
+    .eq('loja_id', lojaId)
+    .eq('mes', mes)
+    .order('data_atendimento', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.atendimento_id ?? null;
+};
+
 const getLastSyncDate = async (internalClient: any, lojaId: string, mes: string): Promise<string | null> => {
   const { data } = await internalClient
     .from('vendas_diarias')
@@ -376,7 +410,7 @@ const getLastSyncDate = async (internalClient: any, lojaId: string, mes: string)
 
 // ===== Fetch all pages from API =====
 
-const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll = false, lastSyncDate?: string | null): Promise<{ records: Atendimento[]; wasPartial: boolean; pagesFetched: number }> => {
+const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll = false, lastSyncDate?: string | null, maxPages = 99, lastKnownId?: string | null): Promise<{ records: Atendimento[]; wasPartial: boolean; pagesFetched: number }> => {
   let wasPartial = false;
   let pagesFetched = 0;
   const cleanToken = loja.bearer.startsWith('Bearer ') ? loja.bearer.slice(7) : loja.bearer;
@@ -406,19 +440,17 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
       // Never go before the first day of the target month
       const firstDay = new Date(Date.UTC(year, month - 1, 1));
       if (startDate < firstDay) startDate = firstDay;
+      // Early-stop: para quando encontramos registros de antes de lastSyncDate.
+      // Antes era lastSyncDate-2, o que causava ~10 páginas/ciclo em lojas grandes.
+      // Agora ~2 páginas/ciclo: página 1 (hoje) + página 2 (quando oldest < hoje).
+      earlyCutoffStr = lastSyncDate;
     } else {
       startDate = new Date(Date.UTC(year, month - 1, 1));
     }
 
     dateFilter['data-inicial'] = `${pad(startDate.getUTCDate())}/${pad(startDate.getUTCMonth() + 1)}/${startDate.getUTCFullYear()}`;
     dateFilter['data-final'] = `${pad(today.getUTCDate())}/${pad(today.getUTCMonth() + 1)}/${today.getUTCFullYear()}`;
-    console.log(`[${loja.id}] Filtro de data: ${dateFilter['data-inicial']} a ${dateFilter['data-final']} (lastSync: ${lastSyncDate ?? 'nenhum'})`);
-
-    // Cutoff para early-stop: 1 dia antes de startDate (buffer extra de segurança)
-    const cutoff = new Date(startDate);
-    cutoff.setUTCDate(cutoff.getUTCDate() - 1);
-    earlyCutoffStr = cutoff.toISOString().split('T')[0];
-    console.log(`[${loja.id}] Early-stop cutoff: ${earlyCutoffStr}`);
+    console.log(`[${loja.id}] Filtro de data: ${dateFilter['data-inicial']} a ${dateFilter['data-final']} (lastSync: ${lastSyncDate ?? 'nenhum'}, cutoff: ${earlyCutoffStr ?? 'nenhum'})`);
   }
 
   console.log(`[${loja.id}] Tenfront: Buscando página 1...`);
@@ -451,6 +483,16 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
 
   console.log(`[${loja.id}] Tenfront: ${totalPages} páginas identificadas, p1: ${allRecords.length} registros`);
 
+  // ID-stop na página 1: se o último ID já sincronizado aparece aqui, não há páginas novas a buscar.
+  // Mais preciso que early-stop por data em lojas de alto volume (ex: Natal).
+  if (lastKnownId) {
+    const p1Ids = allRecords.map(r => r['ID atendimento']);
+    if (p1Ids.includes(lastKnownId)) {
+      console.log(`[${loja.id}] ID-stop p1: lastKnownId=${lastKnownId} encontrado. Nenhuma página adicional necessária.`);
+      return { records: allRecords, wasPartial, pagesFetched };
+    }
+  }
+
   // Early-stop na página 1: se o registro mais antigo já é anterior ao cutoff, não buscar mais.
   // A API retorna newest-first, então registros mais antigos ficam nas páginas seguintes.
   if (earlyCutoffStr && allRecords.length > 0) {
@@ -462,8 +504,13 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
     }
   }
 
+  const pageLimit = Math.min(totalPages, maxPages);
+  if (maxPages < totalPages) {
+    console.log(`[${loja.id}] Limite de páginas por ciclo: ${maxPages} de ${totalPages} disponíveis.`);
+  }
+
   // Se o total de páginas for > 1, buscar as demais
-  for (let page = 2; page <= totalPages; page++) {
+  for (let page = 2; page <= pageLimit; page++) {
     pagesFetched++;
     const response = await fetch(TENFRONT_API_URL, {
       method: 'POST',
@@ -493,9 +540,16 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
     // Aguardar 150ms entre as páginas para evitar burst no rate limit por minuto
     await new Promise(resolve => setTimeout(resolve, 150));
 
-    // Early-stop: para quando registros ficam anteriores à janela incremental.
-    // earlyCutoffStr é baseado em startDate (lastSyncDate-based), não no início do mês —
-    // isso reduz chamadas de ~14 páginas/ciclo para ~1-2 em syncs incrementais.
+    // ID-stop: encontrou o último ID já sincronizado — tudo a partir daqui já está no banco.
+    if (lastKnownId) {
+      const pageIds = records.map(r => r['ID atendimento']);
+      if (pageIds.includes(lastKnownId)) {
+        console.log(`[${loja.id}] ID-stop p${page}: lastKnownId=${lastKnownId} encontrado. Parando.`);
+        break;
+      }
+    }
+
+    // Early-stop por data: fallback para quando não há lastKnownId (primeiro sync do mês).
     if (earlyCutoffStr) {
        const datesInPage = records.map(r => parseDate(r.Data)).filter(Boolean).map(d => d!.isoDate).sort();
        const oldestDateInPage = datesInPage[0];
@@ -721,9 +775,14 @@ const syncLoja = async (
     return { loja_id: loja.id, mes, skipped: true, reason: `saldo_insuficiente (${saldo})` };
   }
 
-  const lastSyncDate = forceFullFetch ? null : await getLastSyncDate(internalClient, loja.id, mes);
-  console.log(`[${loja.id}] Última data no banco: ${lastSyncDate ?? 'nenhuma'}`);
-  const { records: allAtendimentos, wasPartial, pagesFetched } = await fetchAllAtendimentos(loja, mes, false, lastSyncDate);
+  const [lastSyncDate, lastKnownId] = forceFullFetch
+    ? [null, null]
+    : await Promise.all([
+        getLastSyncDate(internalClient, loja.id, mes),
+        getLastSyncedAtendimentoId(internalClient, loja.id, mes),
+      ]);
+  console.log(`[${loja.id}] Última data: ${lastSyncDate ?? 'nenhuma'} | Último ID: ${lastKnownId ?? 'nenhum'}`);
+  const { records: allAtendimentos, wasPartial, pagesFetched } = await fetchAllAtendimentos(loja, mes, false, lastSyncDate, 99, lastKnownId);
   apiCallsMade += pagesFetched; // saldo (já contado) + páginas buscadas
   console.log(`[${loja.id}] Total atendimentos: ${allAtendimentos.length}`);
 
@@ -1150,9 +1209,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verificar saldo uma única vez para todas as lojas (compartilham a mesma cota Tenfront)
+    // Verificar saldo uma única vez para todas as lojas (economiza N-1 req por ciclo)
+    // Roda sempre — inclusive quando force=true (cron) — para não desperdiçar saldo checando por loja
     let sharedSaldo: number | undefined;
-    if (!force && !dryRun && lojas.length > 0) {
+    if (!dryRun && lojas.length > 0) {
       sharedSaldo = await checkSaldo(lojas[0]);
       console.log(`[global] Saldo compartilhado: ${sharedSaldo} req restantes`);
       if (sharedSaldo < MIN_SALDO_THRESHOLD) {
@@ -1181,7 +1241,9 @@ Deno.serve(async (req) => {
         continue;
       }
       try {
-        const result = await syncLoja(internalClient, loja, mes, dryRun, force, sharedSaldo);
+        // force só bypassa o guard de intervalo — NÃO força full fetch (forceFullFetch fica false)
+        // para que lastSyncDate seja sempre usado e o early-stop funcione nos ciclos incrementais
+        const result = await syncLoja(internalClient, loja, mes, dryRun, false, sharedSaldo);
         results.push(result);
       } catch (err) {
         const msg = getErrorMessage(err);

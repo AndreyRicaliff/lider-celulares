@@ -408,6 +408,31 @@ const getLastSyncDate = async (internalClient: any, lojaId: string, mes: string)
   return data?.data ?? null;
 };
 
+// ===== Parse resiliente da resposta Tenfront =====
+
+// A API às vezes devolve JSON inválido com barra invertida solta em campos de texto
+// (ex: Fornecedor "Moura \ cliente"), que o JSON.parse rejeita. Escapa só os
+// backslashes que não iniciam um escape válido, preservando os demais.
+const VALID_JSON_ESCAPES = new Set(['"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u']);
+
+const escapeInvalidBackslashes = (raw: string): string => {
+  let out = '';
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] !== '\\') { out += raw[i]; continue; }
+    if (VALID_JSON_ESCAPES.has(raw[i + 1])) { out += raw[i] + raw[i + 1]; i++; continue; }
+    out += '\\\\';
+  }
+  return out;
+};
+
+const parseTenfrontJson = <T>(raw: string): T => {
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return JSON.parse(escapeInvalidBackslashes(raw)) as T;
+  }
+};
+
 // ===== Fetch all pages from API =====
 
 const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll = false, lastSyncDate?: string | null, maxPages = 99, lastKnownId?: string | null): Promise<{ records: Atendimento[]; wasPartial: boolean; pagesFetched: number }> => {
@@ -432,21 +457,12 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
     const today = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
 
-    let startDate: Date;
-    if (lastSyncDate) {
-      // Start from 1 day before last known date as safety buffer
-      startDate = new Date(lastSyncDate + 'T00:00:00Z');
-      startDate.setUTCDate(startDate.getUTCDate() - 1);
-      // Never go before the first day of the target month
-      const firstDay = new Date(Date.UTC(year, month - 1, 1));
-      if (startDate < firstDay) startDate = firstDay;
-      // Early-stop: para quando encontramos registros de antes de lastSyncDate.
-      // Antes era lastSyncDate-2, o que causava ~10 páginas/ciclo em lojas grandes.
-      // Agora ~2 páginas/ciclo: página 1 (hoje) + página 2 (quando oldest < hoje).
-      earlyCutoffStr = lastSyncDate;
-    } else {
-      startDate = new Date(Date.UTC(year, month - 1, 1));
-    }
+    // A API Tenfront só retorna registros quando data-inicial é o primeiro dia do mês:
+    // qualquer data mais recente devolve zero (confirmado 2026-06-09). Por isso buscamos
+    // sempre do dia 1 e cortamos as páginas com ID-stop/early-stop client-side.
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    // Early-stop por data continua como fallback do ID-stop em syncs incrementais.
+    if (lastSyncDate) earlyCutoffStr = lastSyncDate;
 
     dateFilter['data-inicial'] = `${pad(startDate.getUTCDate())}/${pad(startDate.getUTCMonth() + 1)}/${startDate.getUTCFullYear()}`;
     dateFilter['data-final'] = `${pad(today.getUTCDate())}/${pad(today.getUTCMonth() + 1)}/${today.getUTCFullYear()}`;
@@ -467,7 +483,7 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
   }
   
   let firstData: ApiResponse & { response?: { Code?: string; Message?: string }; status?: string };
-  try { firstData = JSON.parse(firstText); } catch { throw new Error(`[${loja.id}] resposta inválida: ${firstText.slice(0, 200)}`); }
+  try { firstData = parseTenfrontJson<typeof firstData>(firstText); } catch { throw new Error(`[${loja.id}] resposta inválida: ${firstText.slice(0, 200)}`); }
 
   const envCode = firstData.response?.Code;
   const envMsg = firstData.response?.Message;
@@ -531,7 +547,7 @@ const fetchAllAtendimentos = async (loja: LojaConfig, mesAlvo?: string, forceAll
       continue;
     }
     
-    const data: ApiResponse = await response.json();
+    const data = parseTenfrontJson<ApiResponse>(await response.text());
     const records = data.Response || [];
     console.log(`[${loja.id}] Tenfront: Página ${page} carregada com ${records.length} registros`);
     

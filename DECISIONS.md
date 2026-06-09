@@ -155,3 +155,26 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 > "A API do ERP não filtrava por data e devolvia todas as páginas, então lojas grandes varriam 6-7 páginas por ciclo e estouravam a quota. Usei o último ID de atendimento já salvo como âncora: como a API é newest-first, paro de paginar assim que reencontro esse ID — tudo mais novo já veio antes na lista, e o upsert por ID garante idempotência. Caiu pra ~1 página por ciclo."
 
 **Fonte:** sessão 2026-06-08 com Ricalfiff (deploy autorizado).
+
+---
+
+## 2026-06-09 — [bug-prod] Janela de data e JSON inválido da API Tenfront travavam o sync incremental
+
+**Problema:** dois comportamentos não-documentados da API Tenfront, descobertos em smoke test pós-deploy:
+1. **Janela de data:** a API só retorna registros quando `data-inicial` é o **primeiro dia do mês**. Qualquer data mais recente devolve **zero** — mesmo havendo vendas no período. Como o sync incremental enviava `data-inicial = lastSyncDate − 1`, lojas já sincronizadas (natal, caruaru, monteiro, soledade) recebiam vazio a cada ciclo. Só o full-sync das 00:00 (que busca do dia 1) funcionava → dados pareciam "travar" durante o dia.
+2. **JSON inválido:** a API emite barra invertida solta em campos de texto (ex: Fornecedor `"Moura \ cliente"`), que não é escape JSON válido. O `JSON.parse`/`.json()` morria e derrubava o sync da loja inteira (campina-grande).
+
+**Opções consideradas:**
+- Janela — A: ajustar o offset de `lastSyncDate`; B: **sempre buscar do dia 1** e cortar páginas com o ID-stop client-side (já existente).
+- Parse — A: regex global de sanitização (quebra `\\` legítimos); B: escapar **só** backslashes que não iniciam escape válido, varrendo char a char e preservando os demais; C: `.json()` direto (status quo, quebra).
+
+**Decisão:** B nos dois casos. `data-inicial` fixo no dia 1; `parseTenfrontJson` tenta `JSON.parse` normal e, no erro, refaz com `escapeInvalidBackslashes` (fallback barato, só paga custo quando há lixo).
+
+**Por quê:** não controlamos a API — o cliente tem que ser resiliente a um fornecedor que viola o contrato. Buscar do dia 1 é a única janela que a API honra, e o ID-stop (entregue em 2026-06-08) é justamente o que torna isso eficiente sem estourar a quota. O sanitizador char-a-char preserva escapes válidos (incl. `\\`) que uma regex global corromperia.
+
+**Consequências:** sync incremental volta a atualizar durante o dia, não só à meia-noite — resolve a "inconsistência" histórica do projeto. Validado em prod: 5/5 lojas retornam dados, campina processa 478 atendimentos sem travar. O comentário antigo "a API ignora filtros de data" era verdadeiro no passado e ficou obsoleto — a API mudou de comportamento. Dívida: se a Tenfront mudar de novo, o boundary precisa ser revalidado.
+
+**Como explicar em entrevista (30s):**
+> "A API do ERP tinha dois comportamentos não-documentados: só devolvia dados se a data-inicial fosse o dia 1 do mês, e às vezes mandava JSON inválido por não escapar barras digitadas pelo usuário. O sync incremental pedia a data do último registro e recebia zero — por isso os dados só atualizavam no full-sync da meia-noite. Corrigi buscando sempre do dia 1, cortando páginas pelo último ID já salvo, e tornei o parse resiliente: tento o JSON.parse normal e, se falhar, saneio só os escapes inválidos antes de tentar de novo."
+
+**Fonte:** sessão 2026-06-09 com Ricalfiff (deploy autorizado). Bug de janela é pré-existente (não introduzido em 2026-06-08).

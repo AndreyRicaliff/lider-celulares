@@ -1,9 +1,10 @@
-// Configura os acessos do zero: 1 login por colaborador + 1 admin.
-// Email gerado (nome.loja@lidercelulares.local), senha temporaria unica.
-// Uso: node scripts/setup-acessos.mjs dry      -> mostra o plano (nao aplica)
-//      node scripts/setup-acessos.mjs run      -> backup + wipe + cria + relatorio
+// Configura os acessos: 1 admin + 1 login por colaborador, vinculado ao colaborador_id.
+// Email gerado (slug-nome.slug-loja@dominio), senha INDIVIDUAL aleatoria.
+// Uso: node scripts/setup-acessos.mjs dry   -> mostra o plano (nao aplica)
+//      node scripts/setup-acessos.mjs run   -> update-or-create senhas + relatorio CSV + TXT
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { randomInt } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,12 +16,14 @@ const env = Object.fromEntries(
 );
 const sb = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
-const SENHA = 'LiderCel@2026';
 const DOMINIO = 'lidercelulares.local';
 const ADMIN_EMAIL = `admin@${DOMINIO}`;
+const PAINEL = 'https://lider-celulares.vercel.app';
 
+const ALFA = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const genSenha = () => Array.from({ length: 10 }, () => ALFA[randomInt(ALFA.length)]).join('') + '@';
 const slug = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-  .replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '.');
+  .replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '.');
 
 function buildPlan(colaboradores) {
   const used = new Set();
@@ -34,9 +37,9 @@ function buildPlan(colaboradores) {
   const plan = colaboradores.map(c => ({
     nome: c.nome, loja: c.loja_id, cargo: c.cargo, colaborador_id: c.id,
     role: c.cargo === 'Supervisor' ? 'supervisao' : 'colaborador',
-    email: mkEmail(c.nome, c.loja_id),
+    email: mkEmail(c.nome, c.loja_id), senha: genSenha(),
   }));
-  plan.unshift({ nome: 'ADMINISTRADOR', loja: null, cargo: 'Admin', colaborador_id: null, role: 'admin', email: ADMIN_EMAIL });
+  plan.unshift({ nome: 'ADMINISTRADOR', loja: null, cargo: 'Admin', colaborador_id: null, role: 'admin', email: ADMIN_EMAIL, senha: genSenha() });
   return plan;
 }
 
@@ -45,54 +48,79 @@ async function getColaboradores() {
   if (error) throw new Error('colaboradores: ' + error.message);
   return data;
 }
-
 async function listAllAuthUsers() {
   const all = []; let page = 1;
   for (;;) {
     const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 1000 });
     if (error) throw new Error('listUsers: ' + error.message);
     all.push(...data.users);
-    if (data.users.length < 1000) break;
-    page++;
+    if (data.users.length < 1000) break; page++;
   }
   return all;
 }
 
+const NIVEL = {
+  admin: { titulo: 'ADMINISTRADOR — acesso TOTAL (todas as lojas, relatorios, colaboradores, configuracoes)', ordem: 1 },
+  supervisao: { titulo: 'SUPERVISAO — acesso total aos dados (sem gestao de colaboradores/config)', ordem: 2 },
+  colaborador: { titulo: 'VENDEDORES / GERENTES / VR / TRAINEE — acesso LIMITADO', ordem: 3 },
+};
+
+function buildTxt(plan) {
+  const linhas = [];
+  linhas.push('ACESSOS — LIDER CELULARES');
+  linhas.push(`Gerado em 2026-06-15  |  Painel: ${PAINEL}`);
+  linhas.push('Senhas individuais. Troque no primeiro acesso. Distribua por canal seguro.');
+  linhas.push('='.repeat(72));
+  for (const role of ['admin', 'supervisao', 'colaborador']) {
+    const grupo = plan.filter(p => p.role === role);
+    if (!grupo.length) continue;
+    linhas.push('');
+    linhas.push('### ' + NIVEL[role].titulo);
+    if (role === 'colaborador') linhas.push('    (vendedor ve SOMENTE os proprios dados; gerente ve a propria loja)');
+    linhas.push('');
+    let lojaAtual = null;
+    for (const p of grupo.sort((a, b) => `${a.loja}${a.cargo}`.localeCompare(`${b.loja}${b.cargo}`))) {
+      if (role === 'colaborador' && p.loja !== lojaAtual) { lojaAtual = p.loja; linhas.push(`  -- Loja: ${p.loja} --`); }
+      linhas.push(`  ${p.cargo.padEnd(10)} ${(p.nome || '').padEnd(22)} ${p.email.padEnd(42)} senha: ${p.senha}`);
+    }
+  }
+  linhas.push('');
+  linhas.push('='.repeat(72));
+  return linhas.join('\n') + '\n';
+}
+
 async function dry() {
   const plan = buildPlan(await getColaboradores());
-  console.log(`PLANO (${plan.length} logins) — senha temporaria unica: ${SENHA}\n`);
-  console.log('role         | loja            | cargo       | email');
-  for (const p of plan)
-    console.log(`${p.role.padEnd(12)} | ${String(p.loja ?? '-').padEnd(15)} | ${String(p.cargo).padEnd(11)} | ${p.email}`);
-  console.log(`\nDry-run. Rode com "run" para aplicar (apaga os logins atuais primeiro).`);
+  console.log(buildTxt(plan));
+  console.log('Dry-run. Rode com "run" para aplicar.');
 }
 
 async function run() {
   const plan = buildPlan(await getColaboradores());
-  // 1) backup do estado atual
   const before = await listAllAuthUsers();
-  const { data: rolesBefore } = await sb.from('user_roles').select('*');
-  const backupPath = join(root, 'scripts', 'acessos-backup.json');
-  writeFileSync(backupPath, JSON.stringify({ authUsers: before.map(u => ({ id: u.id, email: u.email })), userRoles: rolesBefore }, null, 2));
-  console.log(`backup: ${before.length} auth users + ${rolesBefore?.length ?? 0} user_roles -> ${backupPath}`);
+  const byEmail = new Map(before.map(u => [u.email, u]));
+  writeFileSync(join(root, 'scripts', 'acessos-backup.json'),
+    JSON.stringify({ authUsers: before.map(u => ({ id: u.id, email: u.email })) }, null, 2));
 
-  // 2) wipe
-  await sb.from('user_roles').delete().neq('user_id', '00000000-0000-0000-0000-000000000000');
-  for (const u of before) await sb.auth.admin.deleteUser(u.id);
-  console.log(`wipe: ${before.length} auth users removidos`);
-
-  // 3) criar
-  const report = [];
   for (const p of plan) {
-    const { data, error } = await sb.auth.admin.createUser({ email: p.email, password: SENHA, email_confirm: true });
-    if (error) { console.log(`✗ ${p.email}: ${error.message}`); continue; }
-    const { error: re } = await sb.from('user_roles').insert({ user_id: data.user.id, role: p.role, colaborador_id: p.colaborador_id });
-    if (re) { console.log(`✗ user_roles ${p.email}: ${re.message}`); continue; }
-    report.push({ email: p.email, senha: SENHA, role: p.role, nome: p.nome, loja: p.loja, cargo: p.cargo });
+    const existing = byEmail.get(p.email);
+    if (existing) {
+      // login ja existe com role correto (rodada anterior): so atualiza a senha
+      const { error } = await sb.auth.admin.updateUserById(existing.id, { password: p.senha });
+      if (error) { console.log(`✗ update ${p.email}: ${error.message}`); continue; }
+    } else {
+      const { data, error } = await sb.auth.admin.createUser({ email: p.email, password: p.senha, email_confirm: true });
+      if (error) { console.log(`✗ create ${p.email}: ${error.message}`); continue; }
+      const { error: re } = await sb.from('user_roles').insert({ user_id: data.user.id, role: p.role, colaborador_id: p.colaborador_id });
+      if (re) console.log(`✗ user_roles ${p.email}: ${re.message}`);
+    }
   }
-  const reportPath = join(root, 'scripts', 'acessos-credenciais.csv');
-  writeFileSync(reportPath, 'email,senha,role,nome,loja,cargo\n' + report.map(r => `${r.email},${r.senha},${r.role},"${r.nome}",${r.loja ?? ''},${r.cargo}`).join('\n') + '\n');
-  console.log(`\n✓ ${report.length} logins criados. Credenciais -> ${reportPath}`);
+
+  writeFileSync(join(root, 'scripts', 'acessos-credenciais.csv'),
+    'email,senha,role,nome,loja,cargo\n' + plan.map(p => `${p.email},${p.senha},${p.role},"${p.nome}",${p.loja ?? ''},${p.cargo}`).join('\n') + '\n');
+  const txtPath = join(root, 'scripts', 'ACESSOS-LIDER.txt');
+  writeFileSync(txtPath, buildTxt(plan));
+  console.log(`✓ ${plan.length} acessos configurados. Lista -> ${txtPath}`);
 }
 
 const cmd = process.argv[2];

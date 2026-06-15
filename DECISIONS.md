@@ -200,3 +200,24 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 > "Antes de remover qualquer código, contei as referências de cada símbolo no projeto inteiro — porque o TypeScript não reclama de export não-usado, ele assume que é API pública. Trabalhei em branch com typecheck e build como rede de segurança e revisei o diff. E separei deliberadamente a limpeza segura da modularização da edge function de produção, que tem precedente de regressão: misturar as duas num PR esconderia a causa de uma eventual quebra."
 
 **Fonte:** sessão 2026-06-15 com Ricalfiff (`/revisao` — dead code + modularização).
+
+---
+
+## 2026-06-15 — [segurança] RLS crítico: credenciais Tenfront e escrita anônima expostas
+
+**Problema:** auditoria do controle de acesso (pergunta "é seguro?"). O gating de telas em `App.tsx`/`Sidebar` é só UX — a segurança real é o RLS. Teste empírico com a anon key (que está no bundle público do frontend), **sem autenticar**, vazou: `lojas` (com `tenfront_api_key`/`consumer_key`/`bearer_token` — credenciais do ERP do cliente), `colaboradores`/`colaborador_lojas` (com `salario`), `vendas`/`comissoes`/`configuracoes`/`sync_logs`. Pior: `colaborador_lojas` aceitava INSERT/UPDATE/DELETE anônimo. Causa: 32 das 92 policies eram `USING (true)` `TO public` (padrão de protótipo Lovable nunca endurecido).
+
+**Opções consideradas:**
+- Aplicação — A: `supabase db push` (PROIBIDO: `migration list` mostra drift total — remote vazio em todas; reaplicaria ~50 migrations contra banco já populado); B: SQL Editor manual (à prova de drift, mas manual); C: `supabase db query --linked` (Management API, aplica só o alvo, sem tocar tracking).
+- Escopo — A: reescrever as 28 tabelas agora; B: começar pelo mais crítico (credenciais + escrita anônima) e deixar refinamento por loja/role para fase 2.
+
+**Decisão:** C + B. Migration `20260615120000_harden_rls_critical.sql`: `lojas` → `FOR ALL` só admin (`has_role`); `colaborador_lojas` → SELECT autenticado, escrita só admin. Aplicada via `db query --linked`.
+
+**Por quê:** a edge function lê `lojas` via service_role (bypassa RLS), então travar o cliente não a afeta — confirmado rodando sync force pós-fix (`success:true`). O drift inviabilizou o fluxo normal de migration; `db query --linked` foi o único caminho cirúrgico e seguro. Verificação §16: re-teste anônimo confirmou `lojas` e `colaborador_lojas` fechados + INSERT anônimo `permission denied`.
+
+**Consequências:** vazamento crítico (credenciais + escrita de salário) fechado e verificado em prod. **PENDÊNCIAS:** (1) as credenciais Tenfront expostas devem ser **rotacionadas** no painel (estiveram públicas = comprometidas) — ação do cliente; (2) **FASE 2** ainda aberta — `colaboradores` (salário!), `vendas`, `comissoes`, `configuracoes`, `sync_logs` ainda vazam para anon e precisam de policies por loja/role espelhando o menu; (3) ideal arquitetural: tirar credenciais Tenfront do alcance do cliente (editar via edge function, não via tabela exposta ao admin no browser).
+
+**Como explicar em entrevista (30s):**
+> "Segurança de menu não é segurança. Testei o que a chave anônima — que vai no bundle público — acessa sem login, e achei credenciais de API de terceiro e salários expostos por policies `USING(true)`, além de escrita anônima. Corrigi o crítico primeiro via Management API (porque o histórico de migrations estava em drift), confirmei que a edge function com service_role não foi afetada, e validei o fechamento re-rodando o teste anônimo. O resto do RLS virou fase 2 documentada."
+
+**Fonte:** sessão 2026-06-15 com Ricalfiff (auditoria de segurança — fix crítico autorizado).

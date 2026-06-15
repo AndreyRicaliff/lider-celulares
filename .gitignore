@@ -32,3 +32,5 @@ schema-setup.sql
 setup-crons.sql
 .sync-full.lock
 resultado-*.json
+
+.claude/

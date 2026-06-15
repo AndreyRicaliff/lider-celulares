@@ -34,7 +34,8 @@ function loadEnv(file) {
   } catch { return {}; }
 }
 
-const env = loadEnv(join(__dir, '.env'));
+const root = join(__dir, '..');
+const env = loadEnv(join(root, '.env'));
 const SUPABASE_URL = env.VITE_SUPABASE_URL;
 const SERVICE_KEY  = env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -47,7 +48,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const lojas = JSON.parse(readFileSync(join(__dir, 'lojas.json'), 'utf8'));
+const lojas = JSON.parse(readFileSync(join(root, 'lojas.json'), 'utf8'));
 const args  = process.argv.slice(2);
 
 const now  = new Date();

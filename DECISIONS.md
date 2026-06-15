@@ -246,3 +246,22 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 > "Configurei os acessos vinculando cada login ao colaborador real no banco — isso é o que faz o RLS por escopo funcionar: o vendedor só enxerga as próprias vendas porque a policy compara o colaborador_id do JWT. Gerei os emails a partir do nome+loja (lojistas não têm email corporativo), apliquei via Admin API com backup antes do wipe, e validei logando como cada perfil de verdade."
 
 **Fonte:** sessão 2026-06-15 com Ricalfiff (config de acessos autorizada — recriar do zero).
+
+---
+
+## 2026-06-15 — [sync] Reprocessamento de junho: valores de serviço subcontados por dados não-recalculados
+
+**Problema:** cliente reportou serviços de junho "incompletos" (print do Tenfront: Natal R$ 28.753,62 em serviços; banco tinha R$ 16.385). Suspeita de sync quebrado.
+
+**Investigação (contra a fonte):** (1) cron roda a cada 30min, OK. (2) contagem de atendimentos junho bate 100% com a API (a "falta" aparente vinha da API Tenfront **ignorar o filtro de data** e devolver todo o histórico newest-first — artefato, não perda). (3) divergência real: valores de PROTEÇÃO LÍDER/GARANTIA subcontados ~43%. Causa: o **ID-stop** (decisão 2026-06-08) só processa atendimentos novos e **nunca reprocessa**; os de junho processados antes das correções de classificação (08-09/jun) ficaram com valor errado e não foram recalculados.
+
+**Decisão:** reprocessar junho via `scripts/reprocessar-mes.mjs` (backup → limpa vendas/vendas_diarias/atendimentos_audit da loja+mês → re-sync força reconstrução com a lógica atual). Aplicado nas 5 lojas. Natal passou a bater EXATO (28.753,62 = print).
+
+**Verificação adversarial:** `scripts/verificar-servicos.mjs` compara banco × API por loja. 3 lojas bateram exato; campina/monteiro tinham resíduo (~551/~473). Investigado: era atendimento **CANCELADO** (campina: concluída 4.253,18 = banco, cancelada 551,00). A edge function corretamente exclui cancelados; o resíduo era o script de auditoria somando tudo. **Banco correto nas 5 lojas.**
+
+**Consequências:** valores de serviço de junho corretos. DÍVIDA/risco recorrente: **toda vez que a regra de classificação (`categorization.ts`) mudar, o histórico já sincronizado não recalcula** — é preciso reprocessar o período afetado. O full-sync diário só cobre os últimos dias. Melhoria futura: full-rebuild mensal agendado, ou versionar a lógica e reprocessar quando mudar.
+
+**Como explicar em entrevista (30s):**
+> "O cliente achou que o sync estava perdendo dados. Investiguei contra a fonte: a contagem de atendimentos batia 100% — a API do ERP é que ignora o filtro de data e devolve o histórico todo, o que confunde. A divergência real era de valor: a otimização de paginação por ID nunca reprocessa atendimentos antigos, então os de junho ficaram com a classificação velha. Reprocessei o mês e validei contra a API, inclusive descobrindo que o resíduo final eram vendas canceladas que o sistema corretamente exclui."
+
+**Fonte:** sessão 2026-06-15 com Ricalfiff (reprocessamento autorizado).

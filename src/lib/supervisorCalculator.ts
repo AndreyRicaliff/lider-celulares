@@ -170,52 +170,6 @@ const verificarSuperMetaBatida = (
   }
 };
 
-// Calcula desconto de dívidas para o mês especificado
-function calcularDescontosDividasSupervisor(
-  dividas: Divida[],
-  mesParaCalcular: string
-): { total: number; dividasInfo: { id: string; descricao: string; valor: number; parcelaAtual: number; parcelasTotal: number }[] } {
-  let total = 0;
-  const dividasInfo: { id: string; descricao: string; valor: number; parcelaAtual: number; parcelasTotal: number }[] = [];
-
-  if (!dividas || dividas.length === 0) return { total, dividasInfo };
-
-  dividas.forEach(divida => {
-    const mesInicio = new Date(divida.mes_inicio + '-02');
-    const mesAtual = new Date(mesParaCalcular + '-02');
-    
-    // Só aplicar se o mês atual for >= mês de início
-    if (mesAtual < mesInicio) return;
-    
-    // Calcular quantos meses se passaram desde o início (0 = primeiro mês)
-    const mesesDesdeInicio = (mesAtual.getFullYear() - mesInicio.getFullYear()) * 12 + 
-                             (mesAtual.getMonth() - mesInicio.getMonth());
-    
-    // O número da parcela que deveria ser descontada neste mês (1-indexed)
-    const parcelaDoMes = mesesDesdeInicio + 1;
-    
-    // Próxima parcela a ser paga (1-indexed)
-    const proximaParcela = divida.parcelas_pagas + 1;
-    
-    // Só descontar se:
-    // 1. A parcela do mês está dentro do total de parcelas
-    // 2. A parcela do mês é >= próxima parcela (parcelas pendentes)
-    if (parcelaDoMes <= divida.parcelas_totais && parcelaDoMes >= proximaParcela) {
-      const valorParcela = divida.valor_total / divida.parcelas_totais;
-      total += valorParcela;
-      dividasInfo.push({ 
-        id: divida.id, 
-        descricao: divida.descricao, 
-        valor: valorParcela,
-        parcelaAtual: parcelaDoMes,
-        parcelasTotal: divida.parcelas_totais
-      });
-    }
-  });
-
-  return { total, dividasInfo };
-}
-
 export function calcularFolhaSupervisor(
   supervisorNome: string,
   vendasPorLoja: Record<string, Venda[]>,

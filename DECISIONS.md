@@ -178,3 +178,25 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 > "A API do ERP tinha dois comportamentos não-documentados: só devolvia dados se a data-inicial fosse o dia 1 do mês, e às vezes mandava JSON inválido por não escapar barras digitadas pelo usuário. O sync incremental pedia a data do último registro e recebia zero — por isso os dados só atualizavam no full-sync da meia-noite. Corrigi buscando sempre do dia 1, cortando páginas pelo último ID já salvo, e tornei o parse resiliente: tento o JSON.parse normal e, se falhar, saneio só os escapes inválidos antes de tentar de novo."
 
 **Fonte:** sessão 2026-06-09 com Ricalfiff (deploy autorizado). Bug de janela é pré-existente (não introduzido em 2026-06-08).
+
+---
+
+## 2026-06-15 — [limpeza] Remoção de dead code verificado + scripts one-off da raiz
+
+**Problema:** o projeto acumulou código morto (arquivos e exports nunca importados) e ~16 scripts de investigação/sync soltos na raiz — vários com a anon key Supabase hardcoded. Pedido: limpar e modularizar.
+
+**Opções consideradas:**
+- Detecção — A: confiar no `--fix` do eslint / inspeção manual rápida; B: contar referências de cada símbolo em todo o `src/` (grep) e só remover os com zero usos externos, com `tsc --noEmit` + `vite build` como gate antes/depois.
+- Scripts da raiz — A: deletar tudo; B: deletar os one-off mas **mover** `sync-now.mjs` para `scripts/` (é o sync manual completo, possível fallback operacional).
+- Modularização da edge function `sync-tenfront/index.ts` (1295 linhas) — A: fazer junto, agora; B: adiar para PR dedicado com `deno check` + verificação pós-deploy.
+
+**Decisão:** B em tudo. Removidos 5 arquivos inteiros mortos (`NavLink`, `OptimizedCategorySelector`, `apiOptimization`, `useOptimization`, `cache`) + 18 símbolos mortos (hooks `useComissao`/`useSaveComissoes`/`useColaborador`/`useUpdateColaborador`/`useUpdateDivida`/`useCreateColaborador`, funções de `formatters`, `parseCurrency` duplicado, `calcularDescontosDividasSupervisor`, `CargoType`, campos do store) + dep órfã `react-router-dom`. Scripts one-off deletados, `sync-now.mjs` movido para `scripts/` (paths corrigidos para `../`). **Modularização do `index.ts` adiada.**
+
+**Por quê:** `tsc` não acusa export não-usado (trata como API pública), então a contagem de referências foi o que deu confiança real — não a intuição. A modularização da edge function foi adiada porque ela está em produção e há **precedente documentado de regressão por modularização** (PULSAR-RH perdeu 37 símbolos e quebrou prod, memória `pulsar_rh_modularizacao_regressao`); fundir limpeza segura com refactor arriscado num só PR esconderia a causa se algo quebrasse.
+
+**Consequências:** −633 linhas em `src/`, raiz sem scripts soltos, anon keys hardcoded saíram do working tree (seguem no histórico — anon key é pública por design, risco baixo; rotacionar se o repo virar público). `tsc` e `build` verdes. Dívida que permanece: 102 erros de lint pré-existentes (`any`/`require`) e o `index.ts` monolítico.
+
+**Como explicar em entrevista (30s):**
+> "Antes de remover qualquer código, contei as referências de cada símbolo no projeto inteiro — porque o TypeScript não reclama de export não-usado, ele assume que é API pública. Trabalhei em branch com typecheck e build como rede de segurança e revisei o diff. E separei deliberadamente a limpeza segura da modularização da edge function de produção, que tem precedente de regressão: misturar as duas num PR esconderia a causa de uma eventual quebra."
+
+**Fonte:** sessão 2026-06-15 com Ricalfiff (`/revisao` — dead code + modularização).

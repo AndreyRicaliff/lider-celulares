@@ -11,7 +11,6 @@ export const LOJAS_IDS = ['soledade', 'monteiro', 'campina-grande', 'natal', 'ca
 export type LojaId = typeof LOJAS_IDS[number];
 
 export const CARGOS = ['Gerente', 'Vendedor', 'VR', 'Trainee', 'Supervisor'] as const;
-export type CargoType = typeof CARGOS[number];
 
 export const CATEGORY_COLUMNS = {
   smartphones: ['BONIFICADO LC', 'SUPER BONIFICADO', 'ANATEL'],

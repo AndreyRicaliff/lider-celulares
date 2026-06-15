@@ -13,14 +13,6 @@ export interface CalculoResult {
   comissaoDetalhada: Record<string, number>;
 }
 
-export const parseCurrency = (value: unknown): number => {
-  if (typeof value === 'number') return value;
-  if (typeof value !== 'string') return 0;
-  const cleanedValue = String(value).replace(/R\$\s?/, '').replace(/\./g, '').replace(',', '.');
-  const number = parseFloat(cleanedValue);
-  return isNaN(number) ? 0 : number;
-};
-
 const safeGet = (totais: Record<string, number>, col: string): number => {
   return totais[col.toUpperCase()] || 0;
 };

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Colaborador, ColaboradorLoja, Divida, ColaboradorComDividas, CargoTipo } from '@/types/database';
 import { toast } from 'sonner';
-import { mapLojaToSharedBase, getLojaIdsForQuery } from '@/lib/lojaRules';
+import { getLojaIdsForQuery } from '@/lib/lojaRules';
 
 export const useColaboradores = (lojaId?: string) => {
   return useQuery({
@@ -124,86 +124,6 @@ export const useSupervisores = () => {
   });
 };
 
-export const useColaborador = (id: string) => {
-  return useQuery({
-    queryKey: ['colaborador', id],
-    queryFn: async (): Promise<ColaboradorComDividas | null> => {
-      const { data: colaborador, error } = await supabase
-        .from('colaboradores')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (error) throw error;
-      if (!colaborador) return null;
-      
-      const { data: dividas } = await supabase
-        .from('dividas')
-        .select('*')
-        .eq('colaborador_id', id);
-      
-      return {
-        ...colaborador,
-        cargo: colaborador.cargo as CargoTipo,
-        dividas: (dividas || []).map(d => ({
-          ...d,
-          loja_id: (d as unknown as { loja_id: string | null }).loja_id ?? null,
-        })) as Divida[],
-      };
-    },
-    enabled: !!id,
-  });
-};
-
-export const useCreateColaborador = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (data: Omit<Colaborador, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data: result, error } = await supabase
-        .from('colaboradores')
-        .insert(data)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
-      toast.success('Colaborador criado com sucesso!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao criar colaborador: ' + error.message);
-    },
-  });
-};
-
-export const useUpdateColaborador = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ id, ...data }: Partial<Colaborador> & { id: string }) => {
-      const { data: result, error } = await supabase
-        .from('colaboradores')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
-      toast.success('Colaborador atualizado com sucesso!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao atualizar colaborador: ' + error.message);
-    },
-  });
-};
-
 export const useDeleteColaborador = () => {
   const queryClient = useQueryClient();
   
@@ -248,32 +168,6 @@ export const useCreateDivida = () => {
     },
     onError: (error) => {
       toast.error('Erro ao adicionar dívida: ' + error.message);
-    },
-  });
-};
-
-export const useUpdateDivida = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ id, ...data }: Partial<Divida> & { id: string }) => {
-      const { data: result, error } = await supabase
-        .from('dividas')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
-      queryClient.invalidateQueries({ queryKey: ['colaborador'] });
-      toast.success('Dívida atualizada com sucesso!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao atualizar dívida: ' + error.message);
     },
   });
 };

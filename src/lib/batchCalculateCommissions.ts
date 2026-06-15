@@ -381,7 +381,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string): 
 
     if (comissoes.length === 0) return { count: 0 };
 
-    // Save commissions — same logic as useSaveComissoes (preserve manual values)
+    // Save commissions preserving manually-edited values
     const { data: existing } = await supabase
       .from('comissoes')
       .select('vendedor_nome, bonus_manual, adiantamentos, descontos')

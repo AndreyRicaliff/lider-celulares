@@ -227,3 +227,22 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 > "Segurança de menu não é segurança. Testei o que a chave anônima — que vai no bundle público — acessa sem login, e achei credenciais de API de terceiro e salários expostos por policies `USING(true)`, além de escrita anônima. Corrigi o crítico primeiro via Management API (porque o histórico de migrations estava em drift), confirmei que a edge function com service_role não foi afetada, e validei o fechamento re-rodando o teste anônimo. O resto do RLS virou fase 2 documentada."
 
 **Fonte:** sessão 2026-06-15 com Ricalfiff (auditoria de segurança — fix crítico autorizado).
+
+---
+
+## 2026-06-15 — [acessos] Configuração de logins do zero (1 por colaborador + admin)
+
+**Problema:** havia 24 colaboradores cadastrados mas só 10 logins (1 admin sem colaborador + 9 colaboradores); os 2 supervisores não tinham acesso. Pedido: configurar os acessos do zero.
+
+**Opções consideradas:** escopo (recriar tudo × completar faltantes × só gestão); identidade (lista real × email gerado × adiar); senha (temporária única × individual × definir depois).
+
+**Decisão (Ricalfiff):** recriar do zero + email gerado `slug(nome).slug(loja)@lidercelulares.local` + senha temporária única `LiderCel@2026`. Script `scripts/setup-acessos.mjs` (dry/run): backup do estado atual → wipe dos 10 logins → cria 25 (1 admin + 22 colaborador + 2 supervisao). Cargo define o role (`Supervisor`→`supervisao`, resto→`colaborador`; Gerente é derivado do cargo, como o app espera). Validado com `scripts/validate-acessos.mjs` logando como amostra real: admin/supervisor veem tudo, gerente-natal só natal, vendedor só as próprias 4 vendas.
+
+**Por quê:** vincular cada login ao `colaborador_id` real faz o RLS por escopo (fase 2) funcionar de verdade — o vendedor vê só os próprios dados. Email gerado porque vendedores de loja não têm email corporativo; o `.local` serve como identificador de login (Supabase Auth aceita).
+
+**Consequências:** 25 logins ativos, senha única temporária. CREDENCIAIS em `scripts/acessos-credenciais.csv` e backup em `scripts/acessos-backup.json` — **gitignored, nunca commitar**. PENDÊNCIAS: (1) trocar a senha temporária (não há fluxo "forçar troca no 1º acesso" — melhoria futura); (2) emails `.local` não recebem e-mail → recuperação de senha por e-mail não funciona, reset é via admin; (3) distribuir as credenciais aos funcionários por canal seguro.
+
+**Como explicar em entrevista (30s):**
+> "Configurei os acessos vinculando cada login ao colaborador real no banco — isso é o que faz o RLS por escopo funcionar: o vendedor só enxerga as próprias vendas porque a policy compara o colaborador_id do JWT. Gerei os emails a partir do nome+loja (lojistas não têm email corporativo), apliquei via Admin API com backup antes do wipe, e validei logando como cada perfil de verdade."
+
+**Fonte:** sessão 2026-06-15 com Ricalfiff (config de acessos autorizada — recriar do zero).

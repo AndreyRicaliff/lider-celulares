@@ -34,3 +34,8 @@ setup-crons.sql
 resultado-*.json
 
 .claude/
+
+# Credenciais e backups de acessos (NUNCA commitar)
+scripts/acessos-credenciais.csv
+scripts/acessos-backup.json
+scripts/.rls-test-state.json

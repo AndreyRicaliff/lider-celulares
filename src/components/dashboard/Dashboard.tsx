@@ -338,16 +338,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
         <Card className="!animate-none">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
-              <select
-                value={selectedLoja || ''}
-                onChange={(e) => setSelectedLoja(e.target.value || null)}
-                className="h-10 px-4 rounded-lg border border-border bg-card/50 text-foreground text-sm focus:ring-2 focus:ring-primary/30 w-full sm:w-auto"
-              >
-                <option value="">Todas as Lojas</option>
-                {LOJAS_IDS.map(id => (
-                  <option key={id} value={id}>{LOJAS[id]}</option>
-                ))}
-              </select>
+              {/* Seletor de loja movido para o header global (visível em todas as telas) */}
               <Input
                 type="month"
                 value={selectedMes}

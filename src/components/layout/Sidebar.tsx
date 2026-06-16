@@ -1,13 +1,10 @@
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { LOJAS, LOJAS_IDS, type LojaId } from '@/lib/constants';
+import { LOJAS } from '@/lib/constants';
 import { useAppStore } from '@/store/appStore';
 import { ColaboradorLoja } from '@/hooks/useAuth';
-import { useLojaAlerts } from '@/hooks/useLojaAlerts';
 import {
   Home,
   Users,
-  ChevronDown,
   FileText,
   Settings,
   BarChart3,
@@ -33,41 +30,15 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLojaId, lojasDisponiveis, onSwitchLoja, onSignOut }: SidebarProps) => {
-  const {
-    currentView,
-    setCurrentView,
-    selectedLoja,
-    setSelectedLoja,
-    selectedMes,
-    sidebarOpen,
-    setSidebarOpen
-  } = useAppStore();
-
-  const lojaAlerts = useLojaAlerts(selectedMes);
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
-
-  const toggleMenu = (lojaId: string) => {
-    setOpenMenus(prev => {
-      // Se o menu clicado já está aberto, fecha-o
-      if (prev[lojaId]) {
-        return { ...prev, [lojaId]: false };
-      }
-      // Caso contrário, fecha todos e abre apenas o clicado
-      const newState: Record<string, boolean> = {};
-      LOJAS_IDS.forEach(id => {
-        newState[id] = id === lojaId;
-      });
-      return newState;
-    });
-  };
+  const { currentView, setCurrentView, setSelectedLoja, sidebarOpen, setSidebarOpen } = useAppStore();
 
   const handleNavigation = (view: typeof currentView, loja?: string) => {
     setCurrentView(view);
-    if (loja) {
-      setSelectedLoja(loja);
-    }
+    if (loja) setSelectedLoja(loja);
     setSidebarOpen(false);
   };
+
+  const isAdmin = !isColaborador && !isSupervisao && !isGerente;
 
   return (
     <>
@@ -81,7 +52,7 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
 
       {/* Overlay for mobile */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -99,14 +70,11 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
         {/* Logo */}
         <div className="p-4 border-b border-sidebar-border">
           <img src={logoLider} alt="Líder Celulares" className="h-12 w-auto mx-auto rounded" />
-          <p className="text-xs text-sidebar-foreground text-center mt-2">
-            Sistema de Comissões
-          </p>
+          <p className="text-xs text-sidebar-foreground text-center mt-2">Sistema de Comissões</p>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {/* Dashboard */}
           <NavItem
             icon={<Home size={18} />}
             label="Dashboard"
@@ -114,313 +82,60 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
             onClick={() => handleNavigation('dashboard')}
           />
 
-
-          {/* Colaborador - show Meu Relatório */}
+          {/* ===== COLABORADOR (vendedor/VR/trainee) — loja fixa ===== */}
           {isColaborador && !isGerente && (
             <>
-              {/* Multi-store switcher */}
-              {lojasDisponiveis && lojasDisponiveis.length > 1 && (
-                <div className="mt-4 mb-2">
-                  <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                    Trocar Loja
-                  </span>
-                  <div className="mt-1 space-y-0.5 px-1">
-                    {lojasDisponiveis.map((loja) => (
-                      <button
-                        key={loja.lojaId}
-                        onClick={() => {
-                          onSwitchLoja?.(loja.lojaId);
-                          setSidebarOpen(false);
-                        }}
-                        className={cn(
-                          'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200',
-                          loja.lojaId === colaboradorLojaId
-                            ? 'gradient-primary text-primary-foreground shadow-glow'
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-1'
-                        )}
-                      >
-                        <ArrowLeftRight size={16} />
-                        <span>{LOJAS[loja.lojaId as keyof typeof LOJAS] || loja.lojaId}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 mb-2">
-                <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                  Minha Área
-                </span>
-              </div>
-              <NavItem
-                icon={<FileText size={18} />}
-                label="Meu Relatório"
-                active={currentView === 'relatorio'}
-                onClick={() => handleNavigation('relatorio')}
-              />
+              <TrocarLoja lojasDisponiveis={lojasDisponiveis} colaboradorLojaId={colaboradorLojaId} onSwitchLoja={onSwitchLoja} setSidebarOpen={setSidebarOpen} />
+              <SectionLabel>Minha Área</SectionLabel>
+              <NavItem icon={<FileText size={18} />} label="Meu Relatório" active={currentView === 'relatorio'} onClick={() => handleNavigation('relatorio')} />
               {colaboradorLojaId && (
+                <NavItem icon={<CalendarDays size={18} />} label="Vendas Diárias" active={currentView === 'vendas-diarias'} onClick={() => handleNavigation('vendas-diarias', colaboradorLojaId)} />
+              )}
+            </>
+          )}
+
+          {/* ===== GERENTE — loja fixa, acesso ampliado ===== */}
+          {isGerente && colaboradorLojaId && (
+            <>
+              <TrocarLoja lojasDisponiveis={lojasDisponiveis} colaboradorLojaId={colaboradorLojaId} onSwitchLoja={onSwitchLoja} setSidebarOpen={setSidebarOpen} />
+              <SectionLabel>Minha Área</SectionLabel>
+              <NavItem icon={<FileText size={18} />} label="Meu Relatório" active={currentView === 'relatorio'} onClick={() => handleNavigation('relatorio')} />
+              <SectionLabel>Minha Loja — {LOJAS[colaboradorLojaId as keyof typeof LOJAS]}</SectionLabel>
+              <NavItem icon={<CalendarDays size={18} />} label="Vendas Diárias" active={currentView === 'vendas-diarias'} onClick={() => handleNavigation('vendas-diarias', colaboradorLojaId)} />
+              <NavItem icon={<FileText size={18} />} label="Folha de Pagamento" active={currentView === 'folha'} onClick={() => handleNavigation('folha', colaboradorLojaId)} />
+              <NavItem icon={<Package size={18} />} label="Estoque Inteligente" active={currentView === 'estoque'} onClick={() => handleNavigation('estoque', colaboradorLojaId)} />
+              <NavItem icon={<BarChart3 size={18} />} label="Relatórios" active={currentView === 'relatorios'} onClick={() => handleNavigation('relatorios', colaboradorLojaId)} />
+            </>
+          )}
+
+          {/* ===== ADMIN / SUPERVISÃO — navegação por FUNÇÃO (loja via filtro no topo) ===== */}
+          {(isAdmin || isSupervisao) && (
+            <>
+              <SectionLabel>Operação</SectionLabel>
+              <NavItem icon={<CalendarDays size={18} />} label="Vendas Diárias" active={currentView === 'vendas-diarias'} onClick={() => handleNavigation('vendas-diarias')} />
+              <NavItem icon={<Package size={18} />} label="Estoque Inteligente" active={currentView === 'estoque'} onClick={() => handleNavigation('estoque')} />
+
+              <SectionLabel>Financeiro</SectionLabel>
+              <NavItem icon={<FileText size={18} />} label="Folha de Pagamento" active={currentView === 'folha'} onClick={() => handleNavigation('folha')} />
+              <NavItem icon={<Briefcase size={18} />} label="Supervisão — Folha" active={currentView === 'supervisao-folha'} onClick={() => handleNavigation('supervisao-folha')} />
+
+              <SectionLabel>Relatórios</SectionLabel>
+              <NavItem icon={<BarChart3 size={18} />} label="Relatórios" active={currentView === 'relatorio'} onClick={() => handleNavigation('relatorio')} />
+              <NavItem icon={<Hash size={18} />} label="Relatórios Numéricos" active={currentView === 'relatorios-numericos'} onClick={() => handleNavigation('relatorios-numericos')} />
+
+              {/* Gestão — só admin */}
+              {isAdmin && (
                 <>
-                  <NavItem
-                    icon={<CalendarDays size={18} />}
-                    label="Vendas Diárias"
-                    active={currentView === 'vendas-diarias'}
-                    onClick={() => handleNavigation('vendas-diarias', colaboradorLojaId)}
-                  />
+                  <SectionLabel>Gestão</SectionLabel>
+                  <NavItem icon={<Users size={18} />} label="Colaboradores" active={currentView === 'colaboradores'} onClick={() => handleNavigation('colaboradores')} />
+                  <NavItem icon={<Settings size={18} />} label="Configurações" active={currentView === 'configuracoes'} onClick={() => handleNavigation('configuracoes')} />
                 </>
               )}
             </>
           )}
-
-          {/* Gerente - expanded access */}
-          {isGerente && colaboradorLojaId && (
-            <>
-              {/* Multi-store switcher for gerente */}
-              {lojasDisponiveis && lojasDisponiveis.length > 1 && (
-                <div className="mt-4 mb-2">
-                  <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                    Trocar Loja
-                  </span>
-                  <div className="mt-1 space-y-0.5 px-1">
-                    {lojasDisponiveis.map((loja) => (
-                      <button
-                        key={loja.lojaId}
-                        onClick={() => {
-                          onSwitchLoja?.(loja.lojaId);
-                          setSidebarOpen(false);
-                        }}
-                        className={cn(
-                          'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200',
-                          loja.lojaId === colaboradorLojaId
-                            ? 'gradient-primary text-primary-foreground shadow-glow'
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-1'
-                        )}
-                      >
-                        <ArrowLeftRight size={16} />
-                        <span>{LOJAS[loja.lojaId as keyof typeof LOJAS] || loja.lojaId}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="mt-4 mb-2">
-                <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                  Minha Área
-                </span>
-              </div>
-              <NavItem
-                icon={<FileText size={18} />}
-                label="Meu Relatório"
-                active={currentView === 'relatorio'}
-                onClick={() => handleNavigation('relatorio')}
-              />
-
-              <div className="mt-4 mb-2">
-                <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                  Minha Loja - {LOJAS[colaboradorLojaId as keyof typeof LOJAS]}
-                </span>
-              </div>
-              <NavItem
-                icon={<FileText size={18} />}
-                label="Folha de Pagamento"
-                active={currentView === 'folha'}
-                onClick={() => handleNavigation('folha', colaboradorLojaId)}
-              />
-              <NavItem
-                icon={<CalendarDays size={18} />}
-                label="Vendas Diárias"
-                active={currentView === 'vendas-diarias'}
-                onClick={() => handleNavigation('vendas-diarias', colaboradorLojaId)}
-              />
-              <NavItem
-                icon={<BarChart3 size={18} />}
-                label="Relatórios"
-                active={currentView === 'relatorios'}
-                onClick={() => handleNavigation('relatorios', colaboradorLojaId)}
-              />
-            </>
-          )}
-
-          {/* Supervisão - access to everything except configurações and colaboradores */}
-          {isSupervisao && (
-            <>
-              {/* Lojas */}
-              <div className="mt-4 mb-2">
-                <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                  Lojas
-                </span>
-              </div>
-              {LOJAS_IDS.map((lojaId) => (
-                <div key={lojaId}>
-                  <NavItem
-                    variant="loja"
-                    icon={<ChevronDown size={18} className={cn(
-                      'transition-transform duration-200',
-                      openMenus[lojaId] && 'rotate-180'
-                    )} />}
-                    label={
-                      <span className="flex items-center gap-1.5">
-                        {LOJAS[lojaId]}
-                        {lojaAlerts.has(lojaId) && (
-                          <span className="inline-block h-2 w-2 rounded-full bg-destructive animate-pulse flex-shrink-0" title="Abaixo de 70% da projeção" />
-                        )}
-                      </span>
-                    }
-                    active={openMenus[lojaId]}
-                    onClick={() => toggleMenu(lojaId)}
-                  />
-                  {openMenus[lojaId] && (
-                    <div className="ml-3 mt-1 space-y-0.5 animate-fade-in pl-2 border-l-2 border-primary/20 bg-primary/5 rounded-r-lg py-1.5">
-                      <SubNavItem
-                        icon={<CalendarDays size={16} />}
-                        label="Vendas Diárias"
-                        active={currentView === 'vendas-diarias' && selectedLoja === lojaId}
-                        onClick={() => handleNavigation('vendas-diarias', lojaId)}
-                      />
-                      <SubNavItem
-                        icon={<FileText size={16} />}
-                        label="Folha de Pagamento"
-                        active={currentView === 'folha' && selectedLoja === lojaId}
-                        onClick={() => handleNavigation('folha', lojaId)}
-                      />
-                      <SubNavItem
-                        icon={<Package size={16} />}
-                        label="Estoque Inteligente"
-                        active={currentView === 'estoque' && selectedLoja === lojaId}
-                        onClick={() => handleNavigation('estoque', lojaId)}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Sistema */}
-              <div className="mt-4 mb-2">
-                <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                  Sistema
-                </span>
-              </div>
-              <NavItem
-                icon={<Briefcase size={18} />}
-                label="Supervisão - Folha"
-                active={currentView === 'supervisao-folha'}
-                onClick={() => handleNavigation('supervisao-folha')}
-              />
-              <NavItem
-                icon={<BarChart3 size={18} />}
-                label="Relatórios"
-                active={currentView === 'relatorio'}
-                onClick={() => handleNavigation('relatorio')}
-              />
-              <NavItem
-                icon={<Hash size={18} />}
-                label="Relatórios Numéricos"
-                active={currentView === 'relatorios-numericos'}
-                onClick={() => handleNavigation('relatorios-numericos')}
-              />
-            </>
-          )}
-
-          {/* Admin-only sections */}
-          {!isColaborador && !isSupervisao && (
-            <>
-              {/* Gestão */}
-              <div className="mt-4 mb-2">
-                <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                  Gestão
-                </span>
-              </div>
-              <NavItem
-                icon={<Users size={18} />}
-                label="Colaboradores"
-                active={currentView === 'colaboradores'}
-                onClick={() => handleNavigation('colaboradores')}
-              />
-
-              {/* Lojas */}
-              <div className="mt-4 mb-2">
-                <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                  Lojas
-                </span>
-              </div>
-              {LOJAS_IDS.map((lojaId) => (
-                <div key={lojaId}>
-                  <NavItem
-                    variant="loja"
-                    icon={<ChevronDown size={18} className={cn(
-                      'transition-transform duration-200',
-                      openMenus[lojaId] && 'rotate-180'
-                    )} />}
-                    label={
-                      <span className="flex items-center gap-1.5">
-                        {LOJAS[lojaId]}
-                        {lojaAlerts.has(lojaId) && (
-                          <span className="inline-block h-2 w-2 rounded-full bg-destructive animate-pulse flex-shrink-0" title="Abaixo de 70% da projeção" />
-                        )}
-                      </span>
-                    }
-                    active={openMenus[lojaId]}
-                    onClick={() => toggleMenu(lojaId)}
-                  />
-                  {openMenus[lojaId] && (
-                    <div className="ml-3 mt-1 space-y-0.5 animate-fade-in pl-2 border-l-2 border-primary/20 bg-primary/5 rounded-r-lg py-1.5">
-                      <SubNavItem
-                        icon={<CalendarDays size={16} />}
-                        label="Vendas Diárias"
-                        active={currentView === 'vendas-diarias' && selectedLoja === lojaId}
-                        onClick={() => handleNavigation('vendas-diarias', lojaId)}
-                      />
-                      <SubNavItem
-                        icon={<FileText size={16} />}
-                        label="Folha de Pagamento"
-                        active={currentView === 'folha' && selectedLoja === lojaId}
-                        onClick={() => handleNavigation('folha', lojaId)}
-                      />
-                      <SubNavItem
-                        icon={<Settings size={16} />}
-                        label="Configurações"
-                        active={currentView === 'configuracoes' && selectedLoja === lojaId}
-                        onClick={() => handleNavigation('configuracoes', lojaId)}
-                      />
-                      <SubNavItem
-                        icon={<Package size={16} />}
-                        label="Estoque Inteligente"
-                        active={currentView === 'estoque' && selectedLoja === lojaId}
-                        onClick={() => handleNavigation('estoque', lojaId)}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Sistema */}
-              <div className="mt-4 mb-2">
-                <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">
-                  Sistema
-                </span>
-              </div>
-              <NavItem
-                icon={<Briefcase size={18} />}
-                label="Supervisão - Folha"
-                active={currentView === 'supervisao-folha'}
-                onClick={() => handleNavigation('supervisao-folha')}
-              />
-              <NavItem
-                icon={<BarChart3 size={18} />}
-                label="Relatórios"
-                active={currentView === 'relatorio'}
-                onClick={() => handleNavigation('relatorio')}
-              />
-              <NavItem
-                icon={<Hash size={18} />}
-                label="Relatórios Numéricos"
-                active={currentView === 'relatorios-numericos'}
-                onClick={() => handleNavigation('relatorios-numericos')}
-              />
-            </>
-          )}
         </nav>
 
-        {/* Logout button */}
+        {/* Logout */}
         {onSignOut && (
           <div className="p-3 border-t border-sidebar-border">
             <button
@@ -437,47 +152,62 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
   );
 };
 
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <div className="mt-4 mb-2">
+    <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">{children}</span>
+  </div>
+);
+
+interface TrocarLojaProps {
+  lojasDisponiveis?: ColaboradorLoja[];
+  colaboradorLojaId?: string | null;
+  onSwitchLoja?: (lojaId: string) => void;
+  setSidebarOpen: (open: boolean) => void;
+}
+
+const TrocarLoja = ({ lojasDisponiveis, colaboradorLojaId, onSwitchLoja, setSidebarOpen }: TrocarLojaProps) => {
+  if (!lojasDisponiveis || lojasDisponiveis.length <= 1) return null;
+  return (
+    <div className="mt-4 mb-2">
+      <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">Trocar Loja</span>
+      <div className="mt-1 space-y-0.5 px-1">
+        {lojasDisponiveis.map((loja) => (
+          <button
+            key={loja.lojaId}
+            onClick={() => { onSwitchLoja?.(loja.lojaId); setSidebarOpen(false); }}
+            className={cn(
+              'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200',
+              loja.lojaId === colaboradorLojaId
+                ? 'gradient-primary text-primary-foreground shadow-glow'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-1'
+            )}
+          >
+            <ArrowLeftRight size={16} />
+            <span>{LOJAS[loja.lojaId as keyof typeof LOJAS] || loja.lojaId}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 interface NavItemProps {
   icon: React.ReactNode;
   label: React.ReactNode;
   active?: boolean;
   onClick: () => void;
-  variant?: 'default' | 'loja';
 }
 
-const NavItem = ({ icon, label, active, onClick, variant = 'default' }: NavItemProps) => (
+const NavItem = ({ icon, label, active, onClick }: NavItemProps) => (
   <button
     onClick={onClick}
     className={cn(
       'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
       'hover:bg-sidebar-accent hover:translate-x-1',
-      active && variant === 'default' && 'gradient-primary text-primary-foreground shadow-glow',
-      active && variant === 'loja' && 'bg-primary/10 text-primary border border-primary/20',
-      !active && 'text-sidebar-foreground hover:text-sidebar-accent-foreground'
+      active ? 'gradient-primary text-primary-foreground shadow-glow' : 'text-sidebar-foreground hover:text-sidebar-accent-foreground'
     )}
   >
     {icon}
-    <span>{label}</span>
-  </button>
-);
-
-const SubNavItem = ({ icon, label, active, onClick }: NavItemProps) => (
-  <button
-    onClick={onClick}
-    className={cn(
-      'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-200',
-      'hover:bg-primary/10 hover:text-primary',
-      active 
-        ? 'bg-primary/15 text-primary font-medium shadow-sm' 
-        : 'text-sidebar-foreground/80'
-    )}
-  >
-    <span className={cn(
-      'transition-colors duration-200',
-      active ? 'text-primary' : 'text-sidebar-foreground/60'
-    )}>
-      {icon}
-    </span>
     <span>{label}</span>
   </button>
 );

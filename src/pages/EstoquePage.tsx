@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '@/store/appStore';
 import { useEstoque, useSyncEstoque } from '@/hooks/useEstoque';
+import { SelecioneLoja } from '@/components/SelecioneLoja';
 import { LOJAS } from '@/lib/constants';
 import { 
   Package, 
@@ -65,6 +66,8 @@ export const EstoquePage = () => {
       p.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [products, searchTerm]);
+
+  if (!selectedLoja) return <SelecioneLoja tela="Estoque Inteligente" />;
 
   if (isLoading) {
     return (

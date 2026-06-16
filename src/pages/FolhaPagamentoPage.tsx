@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { SelecioneLoja } from '@/components/SelecioneLoja';
 import { useAppStore } from '@/store/appStore';
 import { useComissoes, useUpdateComissao } from '@/hooks/useComissoes';
 import { useConfiguracao } from '@/hooks/useConfiguracoes';
@@ -102,6 +103,8 @@ export const FolhaPagamentoPage = ({ gerenteLojaId, readOnly }: FolhaPagamentoPa
     () => sortedComissoes.reduce((sum, c) => sum + c.comissao_base, 0),
     [sortedComissoes]
   );
+
+  if (!gerenteLojaId && !selectedLoja) return <SelecioneLoja tela="Folha de Pagamento" />;
 
   return (
     <div className="space-y-6">

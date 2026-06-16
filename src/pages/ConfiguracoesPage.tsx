@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useContext } from 'react';
+import { SelecioneLoja } from '@/components/SelecioneLoja';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '@/store/appStore';
 import { useConfiguracao, useSaveConfiguracao } from '@/hooks/useConfiguracoes';
@@ -144,6 +145,8 @@ export const ConfiguracoesPage = () => {
     () => ({ formConfig, onChange: handleChange }),
     [formConfig, handleChange]
   );
+
+  if (!selectedLoja) return <SelecioneLoja tela="Configurações" />;
 
   if (isLoading) {
     return <Card><CardContent className="py-10 text-center text-muted-foreground">Carregando...</CardContent></Card>;

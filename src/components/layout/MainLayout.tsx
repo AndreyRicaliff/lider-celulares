@@ -84,7 +84,7 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
     <div className="min-h-screen gradient-dark">
       <Sidebar isColaborador={isColaborador} isGerente={isGerente} isSupervisao={isSupervisao} colaboradorLojaId={colaboradorLojaId} lojasDisponiveis={lojasDisponiveis} onSwitchLoja={onSwitchLoja} onSignOut={onSignOut} />
       <div className="lg:ml-64 flex flex-col min-h-screen">
-        <Header onSignOut={onSignOut} />
+        <Header onSignOut={onSignOut} mostrarSeletorLoja={!isColaborador && !isGerente} />
         <main className="flex-1 p-3 sm:p-6 overflow-y-auto pt-20 lg:pt-20">
           {renderContent()}
         </main>

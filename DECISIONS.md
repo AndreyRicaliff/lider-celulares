@@ -359,3 +359,20 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 > "O filtro de loja resetava ao trocar de aba porque o re-foco re-dispara o auth e um useEffect reaplicava o default. Tornei a inicialização idempotente com um useRef que roda uma vez por carga, e parei de persistir a seleção — assim abrir o app vem em 'Todas', mas navegar mantém a loja escolhida."
 
 **Fonte:** sessão 2026-06-16 com Ricalfiff.
+
+---
+
+## 2026-06-16 — [ux] Navegação por função (não por loja) + seletor de loja global
+
+**Problema:** a sidebar era `loja → função`: cada uma das 5 lojas expandia as mesmas 4 sub-páginas (Vendas Diárias, Folha, Configurações, Estoque) = ~20 itens repetidos, sem escalar e incoerente com o Dashboard (que já filtra por loja).
+
+**Decisão:** inverter para `função → filtro de loja`. (1) Seletor de loja **global no Header** (admin/supervisão), visível em todas as telas — removido o duplicado do Dashboard. (2) Sidebar de admin/supervisão reagrupada por função (Operação / Financeiro / Relatórios / Gestão); cada função navega sem fixar loja (usa o `selectedLoja` global). (3) Gerente/colaborador mantidos com loja fixa (já eram função-primeiro). (4) Telas por-loja (Folha/Estoque/Configurações) mostram `<SelecioneLoja>` quando o filtro está em "Todas as Lojas" (antes caíam silenciosamente em 'soledade').
+
+**Por quê:** ~20 itens viram ~6; abrir nova loja não adiciona item; um só modelo mental (função + filtro) em vez de dois. Implementado sem skill de design — reusa os tokens/`NavItem` existentes.
+
+**Consequências/trade-off:** as bolinhas de alerta por-loja (`useLojaAlerts`) saíram do menu (não há mais item por loja). Regressão pequena assumida — reintroduzir como indicador no seletor/Dashboard depois. Vendas Diárias e Relatórios aceitam "Todas"; Folha/Estoque/Config exigem uma loja.
+
+**Como explicar em entrevista (30s):**
+> "A navegação repetia 4 funções dentro de cada loja — 20 itens que não escalavam. Inverti para navegar por função e escolher a loja num filtro global no header, alinhando com o dashboard. Telas que são por loja mostram um aviso quando o filtro está em 'Todas', em vez de cair numa loja aleatória."
+
+**Fonte:** sessão 2026-06-16 com Ricalfiff (sem skill de design, a pedido).

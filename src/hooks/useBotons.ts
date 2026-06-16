@@ -1,7 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { getBotonOverride } from '@/lib/constants';
 
 export interface Boton {
   id: string;
@@ -32,82 +30,6 @@ export const useBotons = (ano?: string) => {
       if (error) throw error;
       
       return (data || []) as BotonComColaborador[];
-    },
-  });
-};
-
-export const useCalculateBoton = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ 
-      colaboradorId, 
-      lojaId, 
-      mes, 
-      metaSmartphones, 
-      metaServicos, 
-      metaPeliculas,
-      vendedorNome
-    }: { 
-      colaboradorId: string;
-      lojaId: string;
-      mes: string;
-      metaSmartphones: boolean;
-      metaServicos: boolean;
-      metaPeliculas: boolean;
-      vendedorNome?: string;
-    }) => {
-      // Determine which boton to award
-      let tipo: 'triplice_coroa' | 'protecao_lider' | null = null;
-      let pontos = 0;
-
-      // Check for manual overrides first
-      const override = getBotonOverride(colaboradorId, mes, vendedorNome);
-      if (override) {
-        tipo = override.tipo;
-        pontos = override.pontos;
-      } else {
-        // Triplice Coroa: bater fase 3 serviços + meta smartphones + meta películas (não mínima)
-        if (metaServicos && metaSmartphones && metaPeliculas) {
-          tipo = 'triplice_coroa';
-          pontos = 10;
-        } 
-        // Proteção Líder: bater apenas fase 3 serviços (e NÃO tríplice coroa)
-        else if (metaServicos) {
-          tipo = 'protecao_lider';
-          pontos = 5;
-        }
-      }
-
-      // Delete existing boton for this month/colaborador
-      await supabase
-        .from('botons')
-        .delete()
-        .eq('colaborador_id', colaboradorId)
-        .eq('mes', mes);
-
-      // Insert new boton if earned
-      if (tipo) {
-        const { error } = await supabase
-          .from('botons')
-          .insert({
-            colaborador_id: colaboradorId,
-            loja_id: lojaId,
-            mes,
-            tipo,
-            pontos
-          });
-        
-        if (error) throw error;
-      }
-
-      return { tipo, pontos };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['botons'] });
-    },
-    onError: (error) => {
-      toast.error('Erro ao calcular boton: ' + error.message);
     },
   });
 };

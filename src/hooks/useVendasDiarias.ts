@@ -1,8 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { VendaDiaria } from '@/types/database';
-import { toast } from 'sonner';
 import { getLojaIdsForQuery } from '@/lib/lojaRules';
 import { isVendaExcluida } from '@/lib/constants';
 
@@ -64,55 +63,6 @@ export const useVendasDiarias = (
         }));
     },
     enabled: !!mes,
-  });
-};
-
-export const useSaveVendasDiarias = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ 
-      lojaId, 
-      mes, 
-      data, 
-      vendasDiarias 
-    }: { 
-      lojaId: string; 
-      mes: string; 
-      data: string;
-      vendasDiarias: Omit<VendaDiaria, 'id' | 'created_at'>[];
-    }) => {
-      // Upsert - atualiza se já existe, insere se não
-      const { data: result, error } = await supabase
-        .from('vendas_diarias')
-        .upsert(
-          vendasDiarias.map(v => ({
-            loja_id: v.loja_id,
-            mes: v.mes,
-            data: v.data,
-            vendedor_nome: v.vendedor_nome,
-            colaborador_id: v.colaborador_id,
-            valor_total: v.valor_total,
-            smartphones: v.smartphones,
-            acessorios: v.acessorios,
-            servicos: v.servicos,
-            geral: (v as any).geral || Number((v as any).detalhes?.['GERAL']) || 0,
-            detalhes: v.detalhes,
-          })),
-          { onConflict: 'loja_id,mes,data,vendedor_nome' }
-        )
-        .select();
-      
-      if (error) throw error;
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendas_diarias'] });
-    },
-    onError: (error) => {
-      console.error('Erro ao salvar vendas diárias:', error);
-      toast.error('Erro ao salvar vendas diárias: ' + error.message);
-    },
   });
 };
 

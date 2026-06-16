@@ -1,7 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Venda } from '@/types/database';
-import { toast } from 'sonner';
 import { isVendedorExcluido, isVendaExcluida } from '@/lib/constants';
 import { getLojaIdsForQuery } from '@/lib/lojaRules';
 
@@ -48,60 +47,3 @@ export const useVendas = (lojaId?: string, mes?: string, vendedor?: string) => {
   });
 };
 
-export const useSaveVendas = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ lojaId, mes, vendas }: { 
-      lojaId: string; 
-      mes: string; 
-      vendas: Omit<Venda, 'id' | 'created_at'>[] 
-    }) => {
-      // Delete existing vendas for this month and loja
-      await supabase
-        .from('vendas')
-        .delete()
-        .eq('loja_id', lojaId)
-        .eq('mes', mes);
-      
-      // Insert new vendas
-      const { data, error } = await supabase
-        .from('vendas')
-        .insert(vendas)
-        .select();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendas'] });
-      toast.success('Vendas salvas com sucesso!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao salvar vendas: ' + error.message);
-    },
-  });
-};
-
-export const useDeleteVendasByMonth = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ lojaId, mes }: { lojaId: string; mes: string }) => {
-      const { error } = await supabase
-        .from('vendas')
-        .delete()
-        .eq('loja_id', lojaId)
-        .eq('mes', mes);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendas'] });
-      toast.success('Vendas excluídas com sucesso!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao excluir vendas: ' + error.message);
-    },
-  });
-};

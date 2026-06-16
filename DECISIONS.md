@@ -284,3 +284,25 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 > "A otimização de paginação por ID nunca reprocessa atendimentos antigos, e a agregação diária era montada só com o que o ciclo trazia, sobrescrevendo o dia — então qualquer venda nova zerava o resto do dia. Mudei a agregação para derivar da tabela de auditoria, que é idempotente e tem todos os atendimentos do mês, mantendo a otimização de busca. Provei o fix removendo um atendimento e rodando o ciclo incremental: o valor se manteve, quando antes despencava."
 
 **Fonte:** sessão 2026-06-15 com Ricalfiff (fix autorizado, opção A).
+
+---
+
+## 2026-06-16 — [segurança] RLS de escrita por papel (fase 1 do plano de endurecimento)
+
+**Problema:** após a fase 2 de ontem, a LEITURA estava por escopo, mas a ESCRITA seguia `authenticated USING(true)` — qualquer usuário logado podia INSERT/UPDATE/DELETE via API direta, contornando o gating de telas do frontend. Segurança de tela não é segurança.
+
+**Decisão:** policies de escrita por papel (migration `20260616120000`), espelhando a UI:
+- `colaboradores`, `configuracoes`, `vendedor_bloqueios`, `botons`, `comissoes` → escrita **admin** (`has_role(auth.uid(),'admin')`). `comissoes` inclui edição manual da Folha e o batch recalc, ambos rodando como admin no front.
+- `dividas` → INSERT/DELETE admin; UPDATE admin **ou supervisão** (SupervisaoFolhaPage confirma pagamento de parcelas).
+- `vendas`, `vendas_diarias`, `tabela_precos` → escrita removida do cliente; só `service_role` (edge functions) escreve.
+- Tabelas com `*_auth_all` (FOR ALL) recriaram SELECT autenticado explícito para não bloquear leitura.
+Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `useDeleteVendasByMonth`, `useSaveVendasDiarias`, `useCalculateBoton` (−189 linhas).
+
+**Por quê:** o RLS é a única garantia real — a chave anon está no bundle. `service_role` (edge) bypassa RLS, então o sync não é afetado.
+
+**Verificado:** `scripts/test-rls-write.mjs` logando como cada papel — vendedor/gerente/supervisão **bloqueados** ao inserir em `configuracoes` (`new row violates row-level security`); admin permitido; `sync-tenfront` force segue `success:true`. `tsc`+`build` verdes.
+
+**Como explicar em entrevista (30s):**
+> "Esconder o botão no front não impede um POST direto na API com a chave anon do bundle. Movi a autorização de escrita para o RLS: cada tabela aceita escrita só do papel certo (admin para cadastros/comissões, supervisão também para baixa de dívidas), e as tabelas alimentadas pelo sync só aceitam o service_role. Validei logando como cada papel e tentando escrever."
+
+**Fonte:** sessão 2026-06-16 com Ricalfiff (plano de endurecimento aprovado, fase 1).

@@ -376,3 +376,25 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 > "A navegação repetia 4 funções dentro de cada loja — 20 itens que não escalavam. Inverti para navegar por função e escolher a loja num filtro global no header, alinhando com o dashboard. Telas que são por loja mostram um aviso quando o filtro está em 'Todas', em vez de cair numa loja aleatória."
 
 **Fonte:** sessão 2026-06-16 com Ricalfiff (sem skill de design, a pedido).
+
+---
+
+## 2026-06-16 — [faturamento] Card decomposto: Líquido + Juros + Desconto = Bruto
+
+**Problema:** o card mostrava só o líquido (valor vendido) e o Tenfront mostrava mais — a investigação provou que a diferença é juros de parcelamento (Natal +13K) e descontos concedidos (Campina +6,5K → preço cheio ≈ 95K). O banco não capturava nenhum dos dois (`valor_bruto` zerado, juros subcontado, audit sem desconto).
+
+**Decisão:** capturar e exibir os dois componentes.
+- `map-venda.ts`: juros = Σ max(0, "Valor com acréscimo" − "Valor informado") do Pagamento; desconto = "Total desconto" do atendimento. Novos campos `juros`/`desconto` em `MappedVenda`.
+- `atendimentos_audit` ganha `total_desconto`; a reconstrução do audit passa esse campo ao re-map.
+- Schema: colunas `juros`/`desconto` em `vendas`/`vendas_diarias` (migration `20260616140000`, via db query).
+- `sync-loja.ts`: agrega juros/desconto por (data,vendedor) → vendas_diarias → vendas.
+- `Dashboard.tsx`: card mostra Líquido (vendido) + Juros parcelam. + Descontos = **Bruto**.
+
+**Verificado (5 lojas, reprocessadas):** Natal líquido 244.138 + juros 13.009 = 257K (≈ Total bruto Tenfront); desconto 12.948 (= "Total desconto" da API). Campina líquido 88.011 + desconto 6.469 = preço cheio 94,5K (≈ os 95K). `deno check` 4 baseline; `tsc`+`build` verdes.
+
+**Incidente/lição:** o reprocessamento via `db query` falhou ao deletar **só** o `atendimentos_audit` — `getLastSyncDate` lê de `vendas_diarias`, então o sync fez early-stop por data e repopulou parcial. **Reprocessar exige deletar as 3 tabelas** (vendas + vendas_diarias + atendimentos_audit), como o `reprocessar-mes.mjs` faz. O sync full também pode estourar `WORKER_RESOURCE_LIMIT` na edge (transitório — 2ª tentativa completa). Fazer **uma loja por vez**.
+
+**Como explicar em entrevista (30s):**
+> "O faturamento do app batia menos que o ERP. Provei que a diferença era juros de parcelamento e descontos — dois componentes que o pipeline não capturava. Passei a extraí-los do Pagamento e do Total desconto, gravar no banco e decompor no card: líquido (base de comissão) + juros + desconto = bruto. Validei loja a loja contra a API do ERP."
+
+**Fonte:** sessão 2026-06-16 com Ricalfiff (opção "completa" aprovada).

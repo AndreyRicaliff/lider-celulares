@@ -137,6 +137,7 @@ export const syncLoja = async (
           }, 0),
           detalhes_brutos: infoAtendimento,
           pagamento: (a as any).Pagamento || [],
+          total_desconto: safeParseNumber((a as any)['Total desconto'] || 0),
           status: a.Status,
           mes,
           alertas_preco: alertasPreco,
@@ -152,7 +153,7 @@ export const syncLoja = async (
   // não só do ciclo atual — garante que um sync incremental não apague dados anteriores.
   const { data: auditDoMes, error: auditErr } = await internalClient
     .from('atendimentos_audit')
-    .select('atendimento_id, vendedor_nome, data_atendimento, valor_total, detalhes_brutos, pagamento, status')
+    .select('atendimento_id, vendedor_nome, data_atendimento, valor_total, detalhes_brutos, pagamento, total_desconto, status')
     .eq('loja_id', loja.id)
     .eq('mes', mes);
   if (auditErr) throw auditErr;
@@ -169,6 +170,7 @@ export const syncLoja = async (
     detalhes_brutos: any[];
     // deno-lint-ignore no-explicit-any
     pagamento: any[];
+    total_desconto: number;
     status: string;
   };
 
@@ -184,6 +186,7 @@ export const syncLoja = async (
       'Total bruto': row.valor_total,
       'Informações do atendimento': row.detalhes_brutos ?? [],
       Pagamento: row.pagamento ?? [],
+      'Total desconto': row.total_desconto ?? 0,
       LojaId: loja.id,
     };
     return mapAtendimentoToVenda(atendimentoReconstruido as any, mes);
@@ -202,6 +205,8 @@ export const syncLoja = async (
     } else {
       existing.valor_total += row.valor_total;
       existing.valor_bruto += row.valor_bruto;
+      existing.juros += row.juros;
+      existing.desconto += row.desconto;
       for (const [k, v] of Object.entries(row.detalhes)) {
         existing.detalhes[k] = (existing.detalhes[k] || 0) + v;
       }
@@ -272,6 +277,8 @@ export const syncLoja = async (
         colaborador_id: resolveColaboradorId(row.vendedor_nome),
         valor_total: row.valor_total,
         valor_bruto: row.valor_bruto,
+        juros: row.juros,
+        desconto: row.desconto,
         smartphones,
         acessorios,
         servicos,
@@ -311,7 +318,7 @@ export const syncLoja = async (
   // (não apenas do batch atual — garante que o total mensal sempre reflita o mês completo)
   const { data: todasDiarias, error: diariasErr } = await internalClient
     .from('vendas_diarias')
-    .select('vendedor_nome, colaborador_id, valor_total, geral, detalhes')
+    .select('vendedor_nome, colaborador_id, valor_total, geral, juros, desconto, detalhes')
     .eq('loja_id', loja.id)
     .eq('mes', mes);
   if (diariasErr) throw diariasErr;
@@ -324,6 +331,8 @@ export const syncLoja = async (
     detalhes: Record<string, number>;
     valor_total: number;
     geral: number;
+    juros: number;
+    desconto: number;
   }>();
   for (const row of todasDiarias || []) {
     const existing = vendedorTotais.get(row.vendedor_nome) || {
@@ -334,9 +343,13 @@ export const syncLoja = async (
       detalhes: {},
       valor_total: 0,
       geral: 0,
+      juros: 0,
+      desconto: 0,
     };
     existing.valor_total += Number(row.valor_total) || 0;
     existing.geral += Number(row.geral) || 0;
+    existing.juros += Number(row.juros) || 0;
+    existing.desconto += Number(row.desconto) || 0;
     for (const [k, v] of Object.entries(row.detalhes || {})) {
       existing.detalhes[k] = (existing.detalhes[k] || 0) + (Number(v) || 0);
     }

@@ -37,6 +37,8 @@ export type MappedVenda = {
   detalhes: Record<string, number>;
   valor_total: number;
   valor_bruto: number;
+  juros: number;
+  desconto: number;
 };
 
 export type LojaConfig = {

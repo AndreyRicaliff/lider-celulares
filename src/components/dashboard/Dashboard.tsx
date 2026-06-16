@@ -110,7 +110,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
   }, [vendasDiarias, temFiltroPeriodo, dataInicioStr, dataFimStr]);
 
   // Métricas do período (quando filtro ativo, usa vendas_diarias; senão, usa vendas mensais)
-  const { totalVendas, totalBruto, juros, totaisPorCategoria, totalComissoes, totalVendedores, mediaComissao, ranking } = useMemo(() => {
+  const { totalVendas, totalBruto, juros, totalDesconto, totaisPorCategoria, totalComissoes, totalVendedores, mediaComissao, ranking } = useMemo(() => {
     if (temFiltroPeriodo) {
       // Usar vendas diárias filtradas
       const nomesCadastrados = registeredNames;
@@ -168,11 +168,13 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       // Para manter precisão, mostramos 0 ou avisamos que é mensal
       const totalComissoesVal = filteredComissoes.reduce((sum, c) => sum + Number(c.comissao_base) + Number(c.bonus_automatico) + Number(c.bonus_manual), 0); 
       
-      const totalBrutoFiltrado = vendasDiariasFiltradas.reduce((sum, v) => sum + (Number((v as any).valor_bruto) || 0), 0);
+      const totalJurosFiltrado = vendasDiariasFiltradas.reduce((sum, v) => sum + (Number((v as any).juros) || 0), 0);
+      const totalDescontoFiltrado = vendasDiariasFiltradas.reduce((sum, v) => sum + (Number((v as any).desconto) || 0), 0);
       return {
         totalVendas: totalGeral,
-        totalBruto: totalBrutoFiltrado,
-        juros: Math.max(0, totalBrutoFiltrado - totalGeral),
+        totalBruto: totalGeral + totalJurosFiltrado + totalDescontoFiltrado,
+        juros: totalJurosFiltrado,
+        totalDesconto: totalDescontoFiltrado,
         totaisPorCategoria: { smartphones, acessorios, cases, servicos, pelicula, assistenciaTecnica, geral },
         totalComissoes: totalComissoesVal,
         totalVendedores: registeredVendedores.size,
@@ -238,11 +240,13 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       vTotals[key].geral += (Number(detalhes?.['GERAL']) || (Number((v as any).geral) || 0));
     });
     
-    const totalBrutoMensal = allVendasList.reduce((sum, v) => sum + (Number((v as any).valor_bruto) || 0), 0);
+    const totalJurosMensal = allVendasList.reduce((sum, v) => sum + (Number((v as any).juros) || 0), 0);
+    const totalDescontoMensal = allVendasList.reduce((sum, v) => sum + (Number((v as any).desconto) || 0), 0);
     return {
       totalVendas: tv,
-      totalBruto: totalBrutoMensal,
-      juros: Math.max(0, totalBrutoMensal - tv),
+      totalBruto: tv + totalJurosMensal + totalDescontoMensal,
+      juros: totalJurosMensal,
+      totalDesconto: totalDescontoMensal,
       totaisPorCategoria: catTotals,
       totalComissoes: tc,
       totalVendedores: tvCount,
@@ -486,14 +490,19 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
                 <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Faturamento</p>
                 <div className="space-y-1.5">
                   <div>
-                    <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Líquido (s/ juros)</p>
+                    <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Líquido (vendido)</p>
                     <p className="text-lg sm:text-2xl font-bold text-gradient truncate">{formatCurrency(totalVendas)}</p>
                   </div>
-                  {totalBruto > 0 && juros > 0 && (
-                    <div className="border-t border-border/30 pt-1.5">
-                      <p className="text-[10px] text-amber-400/80 uppercase tracking-wide">Bruto (c/ juros)</p>
+                  {(juros > 0 || totalDesconto > 0) && (
+                    <div className="border-t border-border/30 pt-1.5 space-y-0.5">
+                      {juros > 0 && (
+                        <p className="text-[10px] text-muted-foreground/60 truncate">+ Juros parcelam.: {formatCurrency(juros)}</p>
+                      )}
+                      {totalDesconto > 0 && (
+                        <p className="text-[10px] text-muted-foreground/60 truncate">+ Descontos: {formatCurrency(totalDesconto)}</p>
+                      )}
+                      <p className="text-[10px] text-amber-400/80 uppercase tracking-wide pt-0.5">Bruto</p>
                       <p className="text-base sm:text-xl font-bold text-amber-400 truncate">{formatCurrency(totalBruto)}</p>
-                      <p className="text-[10px] text-muted-foreground/60 truncate">+{formatCurrency(juros)} ({((juros / totalBruto) * 100).toFixed(1)}%)</p>
                     </div>
                   )}
                 </div>

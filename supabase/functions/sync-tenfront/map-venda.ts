@@ -167,6 +167,14 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   const jurosPorCategoria = computeJurosPorCategoria(pagamentos, itensCat);
   Object.assign(detalhes, jurosPorCategoria);
 
+  // Totais para o card de faturamento bruto/líquido:
+  // juros = acréscimo do parcelamento (cliente paga a mais); desconto = abatimento concedido.
+  const jurosTotal = pagamentos.reduce((s: number, p: any) => {
+    const j = safeParseNumber(p['Valor com acréscimo'] || p['Valor informado'] || 0) - safeParseNumber(p['Valor informado'] || 0);
+    return s + (j > 0 ? j : 0);
+  }, 0);
+  const desconto = safeParseNumber((atendimento as any)['Total desconto'] || 0);
+
   return {
     vendedor_nome: vendedorNome,
     mes: targetMonth,
@@ -174,5 +182,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
     detalhes,
     valor_total: valorTotal,
     valor_bruto: safeParseNumber(atendimento['Total bruto'] || 0),
+    juros: jurosTotal,
+    desconto,
   };
 };

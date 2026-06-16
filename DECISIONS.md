@@ -265,3 +265,22 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 > "O cliente achou que o sync estava perdendo dados. Investiguei contra a fonte: a contagem de atendimentos batia 100% — a API do ERP é que ignora o filtro de data e devolve o histórico todo, o que confunde. A divergência real era de valor: a otimização de paginação por ID nunca reprocessa atendimentos antigos, então os de junho ficaram com a classificação velha. Reprocessei o mês e validei contra a API, inclusive descobrindo que o resíduo final eram vendas canceladas que o sistema corretamente exclui."
 
 **Fonte:** sessão 2026-06-15 com Ricalfiff (reprocessamento autorizado).
+
+---
+
+## 2026-06-15 — [sync] Fix permanente: agregar vendas a partir de atendimentos_audit (não do ciclo)
+
+**Problema:** o reprocessamento corrigia os valores, mas o cron incremental voltava a degradá-los. Causa-raiz (confirmada lendo o código + prova empírica): `vendas_diarias` era gravada com `upsert onConflict(loja,mes,data,vendedor)` montando o total do dia **só com os atendimentos do ciclo atual** — que o ID-stop limita aos novos. O upsert **sobrescrevia** o dia inteiro, perdendo os atendimentos anteriores do mesmo dia. `vendas` (mensal) somava dessas diárias corrompidas. Cada venda nova num dia já sincronizado zerava o dia para só ela.
+
+**Opções:** A — recalcular `vendas_diarias` a partir de TODOS os `atendimentos_audit` do mês (idempotente por atendimento_id, já guarda os itens em `detalhes_brutos`); B — upsert virar merge idempotente com dedup por atendimento; C — abandonar ID-stop e buscar o mês todo sempre (estoura quota).
+
+**Decisão:** A. Em `sync-loja.ts`: grava o audit dos novos PRIMEIRO, depois lê todos os audit do mês, reconstrói cada atendimento (`data_atendimento` ISO → "DD/MM/YYYY 12:00" para o `parseDate` sem disparar o corte das 4h; `detalhes_brutos` como "Informações do atendimento"; `pagamento`; `status`) e re-mapeia com a MESMA `mapAtendimentoToVenda` (zero duplicação de lógica). Agrega o mês completo → upsert. Mantém o ID-stop (otimiza só a BUSCA na API).
+
+**Por quê:** o audit já é a fonte idempotente e completa; derivar dele torna a agregação correta independente de quantos atendimentos o ciclo trouxe. **Verificado em prod:** reproc natal → 28.753,62; removi 1 atendimento do audit (simula venda nova num dia existente — o cenário que degradava) + sync incremental → **manteve 28.753,62** (antes despencava). 5 lojas reprocessadas e estáveis.
+
+**Consequências:** custo extra por ciclo: ler ~100 audits + re-mapear (CPU/DB, não quota API). Resolve a dívida da decisão anterior. A regra de classificação pode mudar livremente — basta reprocessar uma vez e o incremental mantém. `deno check` nos 4 erros baseline.
+
+**Como explicar em entrevista (30s):**
+> "A otimização de paginação por ID nunca reprocessa atendimentos antigos, e a agregação diária era montada só com o que o ciclo trazia, sobrescrevendo o dia — então qualquer venda nova zerava o resto do dia. Mudei a agregação para derivar da tabela de auditoria, que é idempotente e tem todos os atendimentos do mês, mantendo a otimização de busca. Provei o fix removendo um atendimento e rodando o ciclo incremental: o valor se manteve, quando antes despencava."
+
+**Fonte:** sessão 2026-06-15 com Ricalfiff (fix autorizado, opção A).

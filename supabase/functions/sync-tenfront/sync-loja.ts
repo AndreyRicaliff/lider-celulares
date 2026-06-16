@@ -104,9 +104,97 @@ export const syncLoja = async (
     };
   }
 
-  // Agregar por data+vendedor
+  // Gravar atendimentos_audit ANTES de agregar — eles precisam estar no banco
+  // para que o recálculo das diárias parta do conjunto completo do mês.
+  if (allAtendimentos.length > 0) {
+    const { data: tabelaPrecos } = await internalClient.from('tabela_precos').select('*');
+
+    const auditRows = allAtendimentos
+      .filter((a) => parseDate(a.Data)?.month === mes)
+      .map((a) => {
+        let alertasPreco = 0;
+        const infoAtendimento = a['Informações do atendimento'] || [];
+
+        for (const info of infoAtendimento) {
+          const vendas = info.Venda || [];
+          for (const venda of vendas) {
+            const valor = safeParseNumber(venda['Valor de venda'] || (venda as any).Valor || 0);
+            if (checkPriceAlert(venda.Produto, valor, tabelaPrecos || [], loja.id)) {
+              alertasPreco++;
+            }
+          }
+        }
+
+        return {
+          loja_id: loja.id,
+          atendimento_id: a['ID atendimento'],
+          vendedor_nome: (a.Vendedor || '').toUpperCase().trim(),
+          data_atendimento: parseDate(a.Data)?.isoDate,
+          valor_total: safeParseNumber(a['Total bruto']) || infoAtendimento.reduce((sum: number, info: any) => {
+            for (const v of [...(info.Venda || []), ...(info.Brinde || [])]) sum += safeParseNumber(v['Valor de venda'] || v.Valor || 0);
+            for (const t of info.Troca || []) sum += safeParseNumber(t['Valor de venda'] || t.Valor || 0);
+            return sum;
+          }, 0),
+          detalhes_brutos: infoAtendimento,
+          pagamento: (a as any).Pagamento || [],
+          status: a.Status,
+          mes,
+          alertas_preco: alertasPreco,
+        };
+      });
+
+    if (auditRows.length > 0) {
+      await internalClient.from('atendimentos_audit').upsert(auditRows, { onConflict: 'atendimento_id' });
+    }
+  }
+
+  // Recalcular vendas_diarias a partir de TODOS os atendimentos do mês no audit,
+  // não só do ciclo atual — garante que um sync incremental não apague dados anteriores.
+  const { data: auditDoMes, error: auditErr } = await internalClient
+    .from('atendimentos_audit')
+    .select('atendimento_id, vendedor_nome, data_atendimento, valor_total, detalhes_brutos, pagamento, status')
+    .eq('loja_id', loja.id)
+    .eq('mes', mes);
+  if (auditErr) throw auditErr;
+
+  // Reconstruir objeto Atendimento a partir de cada linha do audit e passar por mapAtendimentoToVenda.
+  // data_atendimento está em ISO "YYYY-MM-DD" com o dia já ajustado pelo corte das 4h.
+  // Usamos "DD/MM/YYYY 12:00" para que parseDate produza o mesmo dia (hora 12 nunca dispara o corte).
+  type AuditRow = {
+    atendimento_id: string;
+    vendedor_nome: string;
+    data_atendimento: string;
+    valor_total: number;
+    // deno-lint-ignore no-explicit-any
+    detalhes_brutos: any[];
+    // deno-lint-ignore no-explicit-any
+    pagamento: any[];
+    status: string;
+  };
+
+  const auditRows2: AuditRow[] = auditDoMes ?? [];
+  const mappedOrNull: Array<MappedVenda | null> = auditRows2.map((row: AuditRow): MappedVenda | null => {
+    const [y, m2, d] = row.data_atendimento.split('-');
+    const dataFormatada = `${d}/${m2}/${y} 12:00`;
+    const atendimentoReconstruido = {
+      Data: dataFormatada,
+      'ID atendimento': row.atendimento_id,
+      Vendedor: row.vendedor_nome,
+      Status: row.status,
+      'Total bruto': row.valor_total,
+      'Informações do atendimento': row.detalhes_brutos ?? [],
+      Pagamento: row.pagamento ?? [],
+      LojaId: loja.id,
+    };
+    return mapAtendimentoToVenda(atendimentoReconstruido as any, mes);
+  });
+  const mappedFromAudit: MappedVenda[] = mappedOrNull.filter(
+    (row: MappedVenda | null): row is MappedVenda => row !== null,
+  );
+
+  // Agregar por data+vendedor a partir do audit completo do mês
   const sumByDateVendedor = new Map<string, MappedVenda>();
-  for (const row of mappedRows) {
+  for (const row of mappedFromAudit) {
     const key = `${row.data}|${normalize(row.vendedor_nome)}`;
     const existing = sumByDateVendedor.get(key);
     if (!existing) {
@@ -200,7 +288,9 @@ export const syncLoja = async (
       atendimentos: allAtendimentos.length,
       validos: validAtendimentos.length,
       cancelados: allAtendimentos.length - validAtendimentos.length,
-      mes_count: mappedRows.length,
+      // mes_count agora reflete o total do mês no audit (não só o ciclo atual)
+      mes_count: mappedFromAudit.length,
+      ciclo_count: mappedRows.length,
       diarias: diariasPayload.length,
       sample: diariasPayload.slice(0, 3),
       gruposNaoMapeados: Array.from(unmappedGroups),
@@ -264,56 +354,12 @@ export const syncLoja = async (
 
   const semColaborador = vendasPayload.filter((v) => !v.colaborador_id).map((v) => v.vendedor_nome);
 
-  // Salvar detalhes dos atendimentos originais para auditoria detalhada
-  if (allAtendimentos.length > 0) {
-    const { data: tabelaPrecos } = await internalClient.from('tabela_precos').select('*');
-
-    const auditRows = allAtendimentos
-      .filter(a => parseDate(a.Data)?.month === mes)
-      .map(a => {
-        let alertasPreco = 0;
-        const infoAtendimento = a['Informações do atendimento'] || [];
-
-        for (const info of infoAtendimento) {
-          const vendas = info.Venda || [];
-          for (const venda of vendas) {
-            const valor = safeParseNumber(venda['Valor de venda'] || (venda as any).Valor || 0);
-            if (checkPriceAlert(venda.Produto, valor, tabelaPrecos || [], loja.id)) {
-              alertasPreco++;
-            }
-          }
-
-        }
-
-        return {
-          loja_id: loja.id,
-          atendimento_id: a['ID atendimento'],
-          vendedor_nome: (a.Vendedor || '').toUpperCase().trim(),
-          data_atendimento: parseDate(a.Data)?.isoDate,
-          valor_total: safeParseNumber(a['Total bruto']) || infoAtendimento.reduce((sum: number, info: any) => {
-            for (const v of [...(info.Venda || []), ...(info.Brinde || [])]) sum += safeParseNumber(v['Valor de venda'] || v.Valor || 0);
-            for (const t of info.Troca || []) sum += safeParseNumber(t['Valor de venda'] || t.Valor || 0);
-            return sum;
-          }, 0),
-          detalhes_brutos: infoAtendimento,
-          pagamento: (a as any).Pagamento || [],
-          status: a.Status,
-          mes: mes,
-          alertas_preco: alertasPreco
-        };
-      });
-
-    if (auditRows.length > 0) {
-      await internalClient.from('atendimentos_audit').upsert(auditRows, { onConflict: 'atendimento_id' });
-    }
-  }
-
-
   await internalClient.from('sync_logs').insert({
     loja_id: loja.id,
     mes,
     synced: vendasPayload.length,
-    source_rows: mappedRows.length,
+    // source_rows = total do mês no audit (base do recálculo); ciclo_rows = só o fetch atual
+    source_rows: mappedFromAudit.length,
     vendedores_atualizados: vendasPayload.map((v) => v.vendedor_nome),
     sem_colaborador: semColaborador,
     success: !wasPartial,

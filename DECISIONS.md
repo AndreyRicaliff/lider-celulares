@@ -306,3 +306,22 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 > "Esconder o botão no front não impede um POST direto na API com a chave anon do bundle. Movi a autorização de escrita para o RLS: cada tabela aceita escrita só do papel certo (admin para cadastros/comissões, supervisão também para baixa de dívidas), e as tabelas alimentadas pelo sync só aceitam o service_role. Validei logando como cada papel e tentando escrever."
 
 **Fonte:** sessão 2026-06-16 com Ricalfiff (plano de endurecimento aprovado, fase 1).
+
+---
+
+## 2026-06-16 — [arquitetura] Estoque cacheado em snapshot (fase 2)
+
+**Problema:** `EstoquePage` puxava o estoque ao vivo da API Tenfront a cada abertura/clique (1–20 req por loja via `tenfront-stock`), sem cache. Consumia a quota escassa que o sync de vendas precisa.
+
+**Decisão:** snapshot no banco. Tabela `estoque_snapshot` (RLS: SELECT por escopo de loja, escrita só service_role) + edge function `sync-estoque` (busca credenciais via service_role, pagina o estoque, faz **snapshot replace** por loja: delete+insert) + cron diário `sync-estoque-daily` (05:00 UTC) + `EstoquePage` agora lê do banco via `useEstoque`; botão "Atualizar" dispara `sync-estoque` server-side (`useSyncEstoque`) em vez de bater na API.
+
+**Por quê:** estoque muda devagar — 1x/dia basta. Tirar a chamada ao vivo do cliente elimina o gasto de quota por navegação e remove o caminho que lia credenciais no browser (`fetchTenfrontStock`). Cron criado via `cron.schedule` SEM `unschedule` dos jobs de vendas.
+
+**Verificado:** `sync-estoque` rodado nas 5 lojas (natal 96, caruaru 47, monteiro 38, soledade 31, campina 58); `estoque_snapshot` populado; `deno check`/`tsc`/`build` verdes.
+
+**Consequências:** `fetchTenfrontStock`/`tenfront.ts` ficaram órfãos — removidos na fase 3 (credenciais). Snapshot replace não é transacional (delete+insert); se o insert falhar, a loja fica vazia até o próximo ciclo — aceitável para estoque.
+
+**Como explicar em entrevista (30s):**
+> "O estoque era puxado ao vivo do ERP a cada clique, gastando a quota diária que o sync de vendas precisa. Troquei por um snapshot no banco, sincronizado 1x/dia por uma edge function que busca as credenciais server-side. A tela passou a ler do banco; o botão atualizar dispara o sync no servidor. De quebra, removi o caminho que expunha credenciais no browser."
+
+**Fonte:** sessão 2026-06-16 com Ricalfiff (plano aprovado, fase 2).

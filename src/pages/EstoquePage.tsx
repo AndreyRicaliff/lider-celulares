@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '@/store/appStore';
-import { fetchTenfrontStock, TenfrontProduct } from '@/lib/tenfront';
+import { useEstoque, useSyncEstoque } from '@/hooks/useEstoque';
 import { LOJAS } from '@/lib/constants';
 import { 
   Package, 
@@ -34,12 +33,9 @@ export const EstoquePage = () => {
   const lojaId = selectedLoja || 'soledade';
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: products, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ['tenfront-stock', lojaId],
-    queryFn: () => fetchTenfrontStock(lojaId),
-    enabled: !!lojaId,
-    retry: false
-  });
+  const { data: products, isLoading, error } = useEstoque(lojaId);
+  const syncEstoque = useSyncEstoque(lojaId);
+  const isFetching = syncEstoque.isPending;
 
   const idleProducts = useMemo(() => {
     if (!products) return [];
@@ -74,7 +70,7 @@ export const EstoquePage = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground animate-pulse">Buscando dados no Tenfront...</p>
+        <p className="text-muted-foreground animate-pulse">Carregando estoque...</p>
       </div>
     );
   }
@@ -88,7 +84,7 @@ export const EstoquePage = () => {
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
             {error instanceof Error ? error.message : 'Não foi possível conectar à API do Tenfront. Verifique as credenciais nas configurações.'}
           </p>
-          <Button onClick={() => refetch()} variant="outline" className="border-destructive/20 text-destructive hover:bg-destructive/10">
+          <Button onClick={() => syncEstoque.mutate()} variant="outline" className="border-destructive/20 text-destructive hover:bg-destructive/10">
             Tentar Novamente
           </Button>
         </CardContent>
@@ -108,7 +104,7 @@ export const EstoquePage = () => {
         </div>
         <Button 
           variant="outline" 
-          onClick={() => refetch()} 
+          onClick={() => syncEstoque.mutate()} 
           disabled={isFetching}
           className="shadow-sm"
         >

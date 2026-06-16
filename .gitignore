@@ -42,3 +42,4 @@ scripts/.rls-test-state.json
 scripts/ACESSOS-LIDER.txt
 scripts/reproc-backup-*.json
 scripts/acessos-*.json
+deno.lock

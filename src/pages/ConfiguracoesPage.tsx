@@ -8,10 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Save, Settings, CalendarOff, RefreshCw, Database, Key, ShieldCheck, Copy } from 'lucide-react';
+import { Save, Settings, CalendarOff, RefreshCw, Copy } from 'lucide-react';
 import { DiasFechamentoSelector } from '@/components/configuracoes/DiasFechamentoSelector';
 import { VendedorBloqueiosManager } from '@/components/configuracoes/VendedorBloqueiosManager';
-import { useStoreTenfrontConfig } from '@/hooks/useStoreTenfrontConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -68,128 +67,6 @@ const ConfigInput = React.memo(
   }
 );
 ConfigInput.displayName = 'ConfigInput';
-
-const TenfrontConfig = ({ lojaId }: { lojaId: string }) => {
-  const { config, isLoading, saveConfig } = useStoreTenfrontConfig(lojaId);
-  const [bearerToken, setBearerToken] = useState('');
-  const [consumerKey, setConsumerKey] = useState('');
-  const [consumerSecret, setConsumerSecret] = useState('');
-  const [isEditingKeys, setIsEditingKeys] = useState(false);
-
-  useEffect(() => {
-    if (config) {
-      setBearerToken(config.tenfront_bearer_token || '');
-      setConsumerKey(config.tenfront_consumer_key || '');
-      setConsumerSecret(config.tenfront_consumer_secret || '');
-    }
-  }, [config]);
-
-  const handleSave = () => {
-    saveConfig.mutate({ bearerToken, consumerKey, consumerSecret }, {
-      onSuccess: () => {
-        setIsEditingKeys(false);
-      }
-    });
-  };
-
-  if (isLoading) return null;
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="flex items-center gap-2 text-primary">
-          <ShieldCheck size={20} />
-          Integração Tenfront (Estoque)
-        </CardTitle>
-        {!isEditingKeys && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setIsEditingKeys(true)}
-            className="gap-2"
-          >
-            <Key size={14} />
-            Editar Chaves
-          </Button>
-        )}
-        {isEditingKeys && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => {
-              setIsEditingKeys(false);
-              // Reset to original values
-              if (config) {
-                setBearerToken(config.tenfront_bearer_token || '');
-                setConsumerKey(config.tenfront_consumer_key || '');
-                setConsumerSecret(config.tenfront_consumer_secret || '');
-              }
-            }}
-          >
-            Cancelar
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Configure as chaves da API Tenfront para esta loja para habilitar o estoque inteligente.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="bearerToken">Bearer Token</Label>
-            <div className="relative">
-              <Key className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="bearerToken"
-                type={isEditingKeys ? "text" : "password"}
-                disabled={!isEditingKeys}
-                value={bearerToken}
-                onChange={(e) => setBearerToken(e.target.value)}
-                placeholder="Bearer bus|..."
-                className="pl-9"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="consumerKey">Consumer Key</Label>
-            <div className="relative">
-              <Database className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="consumerKey"
-                type={isEditingKeys ? "text" : "password"}
-                disabled={!isEditingKeys}
-                value={consumerKey}
-                onChange={(e) => setConsumerKey(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="consumerSecret">Consumer Secret</Label>
-            <div className="relative">
-              <ShieldCheck className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="consumerSecret"
-                type={isEditingKeys ? "text" : "password"}
-                disabled={!isEditingKeys}
-                value={consumerSecret}
-                onChange={(e) => setConsumerSecret(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-        </div>
-        {isEditingKeys && (
-          <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={saveConfig.isPending}>
-              {saveConfig.isPending ? 'Salvando...' : 'Salvar Credenciais Tenfront'}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
 
 
 export const ConfiguracoesPage = () => {
@@ -322,9 +199,6 @@ export const ConfiguracoesPage = () => {
       </div>
 
       <div className="grid gap-6">
-        {/* Tenfront API Config */}
-        <TenfrontConfig lojaId={lojaId} />
-
         {/* Dias de Fechamento (Feriados Locais) */}
         <Card>
           <CardHeader>

@@ -325,3 +325,20 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 > "O estoque era puxado ao vivo do ERP a cada clique, gastando a quota diária que o sync de vendas precisa. Troquei por um snapshot no banco, sincronizado 1x/dia por uma edge function que busca as credenciais server-side. A tela passou a ler do banco; o botão atualizar dispara o sync no servidor. De quebra, removi o caminho que expunha credenciais no browser."
 
 **Fonte:** sessão 2026-06-16 com Ricalfiff (plano aprovado, fase 2).
+
+---
+
+## 2026-06-16 — [segurança] Credenciais Tenfront fora do cliente (fase 3)
+
+**Problema:** a tela de Configurações lia/editava as credenciais do ERP (`tenfront_*`) da tabela `lojas` no browser, e `useLojas` fazia `select('*')` (trazia as colunas no payload). Credenciais de terceiro nunca devem chegar ao cliente (já vazaram publicamente uma vez).
+
+**Decisão:** remover todo acesso a credenciais no frontend. Deletados `src/lib/tenfront.ts` e `src/hooks/useStoreTenfrontConfig.ts`; removido o componente `TenfrontConfig` da `ConfiguracoesPage`; `useLojas` passou a `select('id, nome, created_at')`. A edição de credenciais virou operação administrativa via `scripts/set-loja-credenciais.mjs` (service_role, CLI). A edge function `tenfront-stock` (recebia credenciais no body) foi removida do repo — já estava substituída por `sync-estoque` (que busca credenciais server-side) e nem existia deployada.
+
+**Por quê:** depois da fase 2 (estoque cacheado), `fetchTenfrontStock` ficou sem caller — nada no cliente precisa mais das credenciais. As edge functions (`sync-tenfront`, `sync-estoque`) buscam via service_role.
+
+**Verificado:** `useLojas` logado como admin retorna 5 lojas SEM nenhum campo de credencial; `tsc`+`build` verdes; zero referências a `tenfront-stock` no código.
+
+**Como explicar em entrevista (30s):**
+> "As credenciais do ERP eram lidas e editadas no navegador. Tirei isso de vez: o estoque já vinha do banco (fase 2), então removi o código que lia credenciais no cliente, troquei o select('*') por colunas específicas pra nem trafegar, e movi a edição de credenciais para um script administrativo server-side. Confirmei que nenhuma resposta ao browser contém mais as chaves."
+
+**Fonte:** sessão 2026-06-16 com Ricalfiff (plano aprovado, fase 3 — conclui o endurecimento).

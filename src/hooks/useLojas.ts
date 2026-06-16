@@ -8,7 +8,7 @@ export const useLojas = () => {
     queryFn: async (): Promise<Loja[]> => {
       const { data, error } = await supabase
         .from('lojas')
-        .select('*')
+        .select('id, nome, created_at')
         .order('nome');
       
       if (error) throw error;

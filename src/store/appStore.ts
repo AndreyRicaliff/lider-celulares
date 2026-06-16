@@ -37,8 +37,9 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'lider-app-store',
+      // selectedLoja NÃO é persistido: ao abrir o app volta para o default
+      // (Todas, p/ admin/supervisão). A escolha vive só na sessão atual.
       partialize: (state) => ({
-        selectedLoja: state.selectedLoja,
         selectedMes: state.selectedMes,
       }),
     }

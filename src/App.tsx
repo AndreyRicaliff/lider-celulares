@@ -9,7 +9,7 @@ import { useAppStore } from "@/store/appStore";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 const queryClient = new QueryClient();
 
@@ -17,16 +17,20 @@ const AppContent = () => {
   const { currentView, setSelectedLoja } = useAppStore();
   const { user, loading, isAdmin, isSupervisao, isColaborador, isGerente, colaboradorLojaId, lojasDisponiveis, switchLoja, signOut } = useAuth();
 
-  // Set default selectedLoja based on user role
+  // Default da loja: roda só UMA vez por carga do app (não reseta a escolha do
+  // usuário ao trocar de aba/página — re-foco re-dispara o auth, mas a flag evita o reset).
+  // admin/supervisão -> Todas as Lojas (null); gerente/colaborador -> sua loja.
+  const lojaInicializada = useRef(false);
   useEffect(() => {
-    if (!loading && user) {
-      if (isAdmin) {
-        setSelectedLoja('natal'); // Admin defaults to Natal
-      } else if (isGerente || isColaborador) {
-        setSelectedLoja(colaboradorLojaId || 'natal'); // Gerente/Colaborador defaults to their store
-      }
+    if (loading || !user || lojaInicializada.current) return;
+    if (isAdmin || isSupervisao) {
+      lojaInicializada.current = true;
+      setSelectedLoja(null); // Todas as Lojas
+    } else if ((isGerente || isColaborador) && colaboradorLojaId) {
+      lojaInicializada.current = true;
+      setSelectedLoja(colaboradorLojaId);
     }
-  }, [user, loading, isAdmin, isGerente, isColaborador, colaboradorLojaId, setSelectedLoja]);
+  }, [user, loading, isAdmin, isSupervisao, isGerente, isColaborador, colaboradorLojaId, setSelectedLoja]);
 
   if (loading) {
     return (

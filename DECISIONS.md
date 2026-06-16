@@ -342,3 +342,20 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 > "As credenciais do ERP eram lidas e editadas no navegador. Tirei isso de vez: o estoque já vinha do banco (fase 2), então removi o código que lia credenciais no cliente, troquei o select('*') por colunas específicas pra nem trafegar, e movi a edição de credenciais para um script administrativo server-side. Confirmei que nenhuma resposta ao browser contém mais as chaves."
 
 **Fonte:** sessão 2026-06-16 com Ricalfiff (plano aprovado, fase 3 — conclui o endurecimento).
+
+---
+
+## 2026-06-16 — [ux] Filtro de loja: default "Todas", persiste na sessão (não reseta ao navegar)
+
+**Problema:** o filtro de loja resetava sozinho ao trocar de aba/página. Causas: (1) `selectedLoja` era persistido no localStorage; (2) default do admin era `'natal'`; (3) o `useEffect` de default re-rodava a cada mudança de dependência — e o re-foco da janela dispara `onAuthStateChange` do Supabase, recriando `user` e resetando a loja.
+
+**Decisão:** `selectedLoja` deixa de ser persistido (sai do `partialize` do Zustand) e o `useEffect` passa a inicializar o default **uma vez por carga** via flag `useRef` (`lojaInicializada`). Default: admin/supervisão → `null` (Todas as Lojas); gerente/colaborador → sua loja (quando `colaboradorLojaId` chega).
+
+**Por quê:** o pedido — abrir o app vem em "Todas", mas a escolha do usuário sobrevive à navegação e ao re-foco da aba; só uma nova abertura volta ao default. Não-persistir garante "abrir = Todas"; a flag garante "não reseta ao navegar/re-focar". (gerente segue preso à própria loja via `effectiveLoja = colaboradorLojaId || selectedLoja`.)
+
+**Consequências:** os cards agregados refletem o filtro — "Todas" soma as 5 lojas (ex.: serviços R$ 43.535,59); "Natal" mostra só Natal (R$ 28.753,62 = Tenfront). Não havia bug de cálculo; era escopo + reset do filtro.
+
+**Como explicar em entrevista (30s):**
+> "O filtro de loja resetava ao trocar de aba porque o re-foco re-dispara o auth e um useEffect reaplicava o default. Tornei a inicialização idempotente com um useRef que roda uma vez por carga, e parei de persistir a seleção — assim abrir o app vem em 'Todas', mas navegar mantém a loja escolhida."
+
+**Fonte:** sessão 2026-06-16 com Ricalfiff.

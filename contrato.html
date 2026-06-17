@@ -358,10 +358,22 @@
   }
 
   /* Signatures */
-  .signatures {
-    margin-top: 60px;
+  /* Bloco de fechamento: data + assinaturas mantidos juntos na mesma página */
+  .closing {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-top: 54px;
     padding-top: 36px;
     border-top: 1.5px solid var(--border);
+  }
+  .closing-date {
+    text-align: center;
+    font-size: 9.5pt;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .signatures {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 40px;
@@ -427,6 +439,17 @@
     margin: 0;
     size: A4;
   }
+
+  /* Páginas de conteúdo: numeração automática no rodapé (a capa não usa) */
+  .content { page: doc; }
+  @page doc {
+    margin: 0 0 12mm 0;
+    @bottom-center {
+      content: "Página " counter(page) " de " counter(pages);
+      font-size: 8pt;
+      color: #94a3b8;
+    }
+  }
 </style>
 </head>
 <body>
@@ -449,15 +472,15 @@
     <div class="cover-meta">
       <div class="cover-meta-item">
         <div class="label">Data de Emissão</div>
-        <div class="value">20 de Maio de 2026</div>
+        <div class="value">03 de Junho de 2026</div>
       </div>
       <div class="cover-meta-item">
         <div class="label">Vigência</div>
         <div class="value">6 Meses</div>
       </div>
       <div class="cover-meta-item">
-        <div class="label">Valor Total</div>
-        <div class="value">R$ 2.900,00</div>
+        <div class="label">Implantação + 6 meses</div>
+        <div class="value">R$ 3.500,00</div>
       </div>
     </div>
   </div>
@@ -488,8 +511,9 @@
       <div class="party-name">Lider Celulares</div>
       <div class="party-detail">
         CNPJ: 43.674.088/0002-10<br>
-        &nbsp;<br>
-        &nbsp;
+        Av. Prefeito Severino Cabral, 1050 — Catolé<br>
+        Campina Grande — PB · CEP 58.410-185<br>
+        Repr. legal: Igor Araújo da Silva
       </div>
     </div>
   </div>
@@ -505,8 +529,8 @@
       <h2>Do Objeto</h2>
     </div>
     <div class="clause-body">
-      <p>O presente contrato tem por objeto a <strong>implantação de sistema de gestão para lojas</strong> ("Sistema"), conforme especificações acordadas entre as partes, bem como a <strong>manutenção continuada</strong> do referido sistema pelo período de vigência deste instrumento.</p>
-      <p>O Sistema compreende as funcionalidades definidas na fase de levantamento de requisitos, incluindo gerenciamento de vendas, colaboradores, comissões, folha de pagamento e relatórios gerenciais.</p>
+      <p>O presente contrato tem por objeto a <strong>implantação de sistema de acompanhamento de vendas integrado à plataforma Tenfront</strong> ("Sistema"), conforme especificações acordadas entre as partes, bem como a <strong>manutenção continuada</strong> do referido sistema pelo período de vigência deste instrumento.</p>
+      <p>O Sistema compreende a sincronização automatizada dos dados de vendas provenientes da plataforma Tenfront e a disponibilização das funcionalidades definidas na fase de levantamento de requisitos, incluindo acompanhamento de vendas, gestão de colaboradores, cálculo de comissões e relatórios gerenciais.</p>
     </div>
   </div>
 
@@ -517,7 +541,7 @@
       <h2>Do Prazo</h2>
     </div>
     <div class="clause-body">
-      <p>O presente contrato entra em vigor na data de sua assinatura e terá duração de <strong>6 (seis) meses</strong>, podendo ser renovado por igual período mediante acordo escrito entre as partes.</p>
+      <p>O presente contrato entra em vigor na data de sua assinatura e terá duração de <strong>6 (seis) meses</strong>, renovável automaticamente por períodos iguais e sucessivos de 6 (seis) meses, salvo manifestação em contrário de qualquer das partes, por escrito, com a antecedência prevista na Cláusula 12.</p>
     </div>
   </div>
 
@@ -532,21 +556,32 @@
 
       <div class="value-box">
         <div class="value-row">
-          <span class="vr-label">Implantação do Sistema (pagamento único)</span>
+          <span class="vr-label">Implantação do Sistema (50% no aceite + 50% na entrega)</span>
           <span class="vr-value">R$ 1.700,00</span>
         </div>
         <div class="value-row">
           <span class="vr-label">Manutenção Mensal</span>
-          <span class="vr-value">R$ 200,00 / mês</span>
+          <span class="vr-value">R$ 300,00 / mês</span>
         </div>
         <div class="value-row">
-          <span class="vr-label">Total estimado no período (6 meses)</span>
-          <span class="vr-value">R$ 2.900,00</span>
+          <span class="vr-label">Total estimado no período (implantação + 6 meses)</span>
+          <span class="vr-value">R$ 3.500,00</span>
         </div>
       </div>
 
-      <p><strong>Forma de pagamento:</strong> a ser definida entre as partes por meio de transferência bancária, PIX ou outra modalidade aceita mutuamente.</p>
-      <p><strong>Vencimento da mensalidade:</strong> todo dia 10 (dez) de cada mês subsequente ao início da vigência.</p>
+      <p><strong>Pagamento da implantação:</strong> o valor de R$ 1.700,00 será pago em 2 (duas) parcelas iguais de <strong>R$ 850,00</strong> — sendo <strong>50% (cinquenta por cento) no ato do aceite deste contrato</strong> e os <strong>50% (cinquenta por cento) restantes na entrega e conclusão da implantação do Sistema</strong>.</p>
+      <p><strong>Forma de pagamento:</strong> os pagamentos serão efetuados via <strong>PIX</strong>, na chave abaixo, de titularidade do Contratado:</p>
+      <div class="value-box" style="margin-top: 6px;">
+        <div class="value-row">
+          <span class="vr-label">Chave PIX (CPF)</span>
+          <span class="vr-value">147.259.434-79</span>
+        </div>
+        <div class="value-row">
+          <span class="vr-label">Titular</span>
+          <span class="vr-value" style="font-size:10pt;">Andrey Ricaliff Santiago Galdino</span>
+        </div>
+      </div>
+      <p><strong>Vencimento da mensalidade:</strong> a manutenção mensal vence todo dia 3 (três) de cada mês subsequente à conclusão da implantação.</p>
     </div>
   </div>
 
@@ -557,12 +592,13 @@
       <h2>Do Escopo da Manutenção</h2>
     </div>
     <div class="clause-body">
-      <p>A mensalidade de R$ 200,00 contempla os seguintes serviços:</p>
+      <p>A mensalidade de R$ 300,00 contempla os seguintes serviços:</p>
       <ul>
-        <li><strong>Correções livres e ilimitadas:</strong> resolução de erros, falhas ou comportamentos inesperados no Sistema, sem custo adicional, independentemente do volume;</li>
-        <li><strong>Até 2 (duas) adições de funcionalidades por mês:</strong> implementação de novas funcionalidades de escopo reduzido, conforme alinhamento prévio entre as partes.</li>
+        <li><strong>Correção de erros sem custo adicional:</strong> resolução de falhas, bugs ou comportamentos inesperados do Sistema já entregue não é contabilizada como alteração e será atendida durante toda a vigência;</li>
+        <li><strong>Até 6 (seis) alterações por mês:</strong> ajustes e pequenas funcionalidades de escopo reduzido solicitados pelo Contratante, conforme alinhamento prévio entre as partes.</li>
       </ul>
-      <p>Entende-se por "adição de escopo reduzido" qualquer funcionalidade que não exija reestruturação significativa da base de código, de banco de dados ou da arquitetura do sistema, a critério técnico do Contratado.</p>
+      <p>Entende-se por <strong>"alteração de escopo reduzido"</strong> qualquer ajuste ou funcionalidade que não exija reestruturação significativa da base de código, do banco de dados ou da arquitetura do Sistema, a critério técnico do Contratado.</p>
+      <p>As alterações não utilizadas em determinado mês <strong>não são acumulativas</strong> para os meses seguintes, salvo acordo expresso entre as partes.</p>
     </div>
   </div>
 
@@ -624,30 +660,96 @@
     </div>
   </div>
 
-  <!-- Assinaturas -->
-  <div class="signatures">
-    <div class="sig-block">
-      <div class="sig-line"></div>
-      <div class="sig-name">Andrey Ricaliff Santiago Galdino</div>
-      <div class="sig-role">Contratado — Prestador de Serviços</div>
-      <div class="sig-cpf">CPF: 147.259.434-79</div>
+  <!-- Cláusula 9 -->
+  <div class="section">
+    <div class="clause-number">
+      <div class="num">9</div>
+      <h2>Da Inexistência de Vínculo Empregatício</h2>
     </div>
-    <div class="sig-block">
-      <div class="sig-line"></div>
-      <div class="sig-name">Lider Celulares</div>
-      <div class="sig-role">Contratante</div>
-      <div class="sig-cpf">CNPJ: 43.674.088/0002-10</div>
+    <div class="clause-body">
+      <p>O presente contrato tem natureza estritamente <strong>civil</strong>, de prestação autônoma de serviços, nos termos dos arts. 593 e seguintes do Código Civil, <strong>não gerando qualquer vínculo empregatício</strong> entre as partes.</p>
+      <p>O Contratado presta os serviços com plena <strong>autonomia técnica</strong>, sem subordinação hierárquica, controle de jornada, exclusividade ou pessoalidade nos moldes da legislação trabalhista, organizando livremente seu tempo, local e métodos de trabalho. Não há, portanto, obrigação de recolhimento de encargos trabalhistas, previdenciários ou de FGTS decorrentes deste instrumento.</p>
     </div>
   </div>
 
-  <div style="text-align:center; margin-top: 36px; font-size: 8.5pt; color: var(--muted);">
-    Campina Grande — PB, 20 de Maio de 2026
+  <!-- Cláusula 10 -->
+  <div class="section">
+    <div class="clause-number">
+      <div class="num">10</div>
+      <h2>Da Responsabilidade Tributária</h2>
+    </div>
+    <div class="clause-body">
+      <p>Cada parte arcará com os tributos que lhe forem atribuídos pela legislação vigente.</p>
+      <p>Caso a lei imponha ao Contratante a retenção de tributos na fonte sobre pagamentos efetuados a pessoa física — tais como Imposto de Renda (IRRF), contribuição previdenciária (INSS) ou ISS —, tais retenções serão por ele efetuadas e recolhidas aos órgãos competentes, deduzidas dos valores previstos na Cláusula 3, mediante fornecimento dos respectivos comprovantes ao Contratado.</p>
+    </div>
   </div>
 
-  <div class="page-footer">
-    <span>Contrato Nº 001/2026</span>
-    <span>Andrey Ricaliff · Desenvolvimento de Software</span>
-    <span>Página 2 de 2</span>
+  <!-- Cláusula 11 -->
+  <div class="section">
+    <div class="clause-number">
+      <div class="num">11</div>
+      <h2>Da Proteção de Dados Pessoais</h2>
+    </div>
+    <div class="clause-body">
+      <p>No tratamento de dados pessoais acessados na execução dos serviços — tais como dados de colaboradores e clientes do Contratante —, o <strong>Contratante figura como controlador</strong> e o <strong>Contratado como operador</strong>, nos termos da Lei nº 13.709/2018 (LGPD).</p>
+      <p>O Contratado obriga-se a tratar tais dados exclusivamente para as finalidades deste contrato, a adotar medidas de segurança adequadas e a, ao término da prestação, eliminá-los ou devolvê-los ao Contratante, salvo obrigação legal de retenção.</p>
+    </div>
+  </div>
+
+  <!-- Cláusula 12 -->
+  <div class="section">
+    <div class="clause-number">
+      <div class="num">12</div>
+      <h2>Da Rescisão</h2>
+    </div>
+    <div class="clause-body">
+      <p>Qualquer das partes poderá rescindir o presente contrato, imotivadamente, mediante comunicação escrita com antecedência mínima de <strong>30 (trinta) dias</strong>, sendo devidos os valores proporcionais aos serviços prestados até a data efetiva do término.</p>
+      <p>O inadimplemento de qualquer mensalidade por prazo superior a <strong>15 (quinze) dias</strong> faculta ao Contratado suspender os serviços de manutenção até a regularização do pagamento.</p>
+      <p>A rescisão do contrato de manutenção <strong>não afeta a propriedade do Contratante sobre o sistema já entregue e quitado</strong> (Cláusula 8), cessando, contudo, as obrigações de suporte, correção e atualização por parte do Contratado.</p>
+    </div>
+  </div>
+
+  <!-- Cláusula 13 -->
+  <div class="section">
+    <div class="clause-number">
+      <div class="num">13</div>
+      <h2>Da Limitação de Responsabilidade</h2>
+    </div>
+    <div class="clause-body">
+      <p>A responsabilidade do Contratado limita-se à correção dos serviços efetivamente prestados, <strong>não respondendo por lucros cessantes, danos indiretos</strong> ou prejuízos decorrentes de uso indevido do Sistema, de falhas em serviços de terceiros — incluindo a plataforma <strong>Tenfront</strong>, provedores de hospedagem e conectividade — ou de fatos alheios à sua atuação.</p>
+      <p>Em qualquer hipótese, a responsabilidade total do Contratado fica limitada ao valor efetivamente pago pelo Contratante nos <strong>3 (três) meses</strong> anteriores ao evento que originou a responsabilidade.</p>
+    </div>
+  </div>
+
+  <!-- Cláusula 14 -->
+  <div class="section">
+    <div class="clause-number">
+      <div class="num">14</div>
+      <h2>Das Disposições Gerais</h2>
+    </div>
+    <div class="clause-body">
+      <p>As alterações a este contrato somente terão validade se formalizadas por escrito e assinadas por ambas as partes. A tolerância quanto ao descumprimento de qualquer cláusula não implica novação ou renúncia de direitos.</p>
+      <p>E, por estarem assim justas e contratadas, as partes assinam o presente instrumento em 2 (duas) vias de igual teor e forma.</p>
+    </div>
+  </div>
+
+  <!-- Fechamento: data + assinaturas (mantidos juntos) -->
+  <div class="closing">
+    <div class="closing-date">Campina Grande — PB, 03 de Junho de 2026.</div>
+    <div class="signatures">
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-name">Andrey Ricaliff Santiago Galdino</div>
+        <div class="sig-role">Contratado — Prestador de Serviços</div>
+        <div class="sig-cpf">CPF: 147.259.434-79</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-name">Igor Araújo da Silva</div>
+        <div class="sig-role">Contratante — Lider Celulares</div>
+        <div class="sig-cpf">CNPJ: 43.674.088/0002-10</div>
+      </div>
+    </div>
   </div>
 
 </div>

@@ -18,7 +18,7 @@ const sb = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { 
 
 const DOMINIO = 'lidercelulares.local';
 const ADMIN_EMAIL = `admin@${DOMINIO}`;
-const PAINEL = 'https://lider-celulares.vercel.app';
+const PAINEL = 'https://lider-celulares-phi.vercel.app';
 
 const ALFA = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const genSenha = () => Array.from({ length: 10 }, () => ALFA[randomInt(ALFA.length)]).join('') + '@';

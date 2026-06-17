@@ -172,7 +172,8 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       const totalDescontoFiltrado = vendasDiariasFiltradas.reduce((sum, v) => sum + (Number((v as any).desconto) || 0), 0);
       return {
         totalVendas: totalGeral,
-        totalBruto: totalGeral + totalJurosFiltrado + totalDescontoFiltrado,
+        // Bruto = líquido + juros (o que o cliente paga). Desconto é abatimento, não receita: não soma.
+        totalBruto: totalGeral + totalJurosFiltrado,
         juros: totalJurosFiltrado,
         totalDesconto: totalDescontoFiltrado,
         totaisPorCategoria: { smartphones, acessorios, cases, servicos, pelicula, assistenciaTecnica, geral },
@@ -244,7 +245,8 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
     const totalDescontoMensal = allVendasList.reduce((sum, v) => sum + (Number((v as any).desconto) || 0), 0);
     return {
       totalVendas: tv,
-      totalBruto: tv + totalJurosMensal + totalDescontoMensal,
+      // Bruto = líquido + juros (o que o cliente paga). Desconto é abatimento, não receita: não soma.
+      totalBruto: tv + totalJurosMensal,
       juros: totalJurosMensal,
       totalDesconto: totalDescontoMensal,
       totaisPorCategoria: catTotals,
@@ -493,17 +495,15 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
                     <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Líquido (vendido)</p>
                     <p className="text-lg sm:text-2xl font-bold text-gradient truncate">{formatCurrency(totalVendas)}</p>
                   </div>
-                  {(juros > 0 || totalDesconto > 0) && (
-                    <div className="border-t border-border/30 pt-1.5 space-y-0.5">
-                      {juros > 0 && (
-                        <p className="text-[10px] text-muted-foreground/60 truncate">+ Juros parcelam.: {formatCurrency(juros)}</p>
-                      )}
-                      {totalDesconto > 0 && (
-                        <p className="text-[10px] text-muted-foreground/60 truncate">+ Descontos: {formatCurrency(totalDesconto)}</p>
-                      )}
-                      <p className="text-[10px] text-amber-400/80 uppercase tracking-wide pt-0.5">Bruto</p>
+                  {juros > 0 && (
+                    <div className="border-t border-border/30 pt-1.5">
+                      <p className="text-[10px] text-muted-foreground/60 truncate">+ Juros parcelam.: {formatCurrency(juros)}</p>
+                      <p className="text-[10px] text-amber-400/80 uppercase tracking-wide pt-0.5">Bruto (c/ juros)</p>
                       <p className="text-base sm:text-xl font-bold text-amber-400 truncate">{formatCurrency(totalBruto)}</p>
                     </div>
+                  )}
+                  {totalDesconto > 0 && (
+                    <p className="text-[10px] text-muted-foreground/50 truncate pt-0.5">Descontos concedidos: {formatCurrency(totalDesconto)} (abatido)</p>
                   )}
                 </div>
               </div>

@@ -398,3 +398,15 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 > "O faturamento do app batia menos que o ERP. Provei que a diferença era juros de parcelamento e descontos — dois componentes que o pipeline não capturava. Passei a extraí-los do Pagamento e do Total desconto, gravar no banco e decompor no card: líquido (base de comissão) + juros + desconto = bruto. Validei loja a loja contra a API do ERP."
 
 **Fonte:** sessão 2026-06-16 com Ricalfiff (opção "completa" aprovada).
+
+---
+
+## 2026-06-17 — [faturamento] Bruto = Líquido + Juros (desconto não soma)
+
+**Problema:** o card somava Líquido + Juros + Desconto = Bruto, inflando (Natal 283K nosso vs 267K Tenfront). O excedente (~16K) era exatamente o desconto.
+
+**Decisão:** Bruto = Líquido + Juros (o que o cliente paga). Desconto é abatimento concedido, não receita — passa a aparecer como linha informativa ("abatido"), sem somar ao bruto. Mudança só no Dashboard (`totalBruto = totalVendas + juros` nos dois modos; card reorganizado). Dados no banco inalterados.
+
+**Resultado:** Natal Bruto 269.658 ≈ Tenfront 267.253. NOTA: o "Faturamento" do **Dashboard** do Tenfront (102.518 campina) diverge do **Relatório Financeiro** do próprio Tenfront (~95K campina) e não é reproduzível com a API de atendimentos — o ERP é inconsistente entre telas. A referência auditável do nosso app é o LÍQUIDO (soma dos itens vendidos concluídos = base de comissão); juros/desconto são decomposições rastreáveis até o atendimento.
+
+**Fonte:** sessão 2026-06-17 com Ricalfiff (prints natal 267K/283K e campina dashboard 102K).

@@ -62,6 +62,12 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   const status = (atendimento.Status || '').trim().toLowerCase();
   if (status.includes('cancel') || status.includes('exclu')) return null;
 
+  // Total bruto < 0 = compra de seminovo / devolução (saída de caixa), não venda.
+  // O Tenfront registra essas operações com bruto negativo; espelhamos excluindo-as
+  // do faturamento e da comissão (confirmado com Ricalfiff 2026-06-18, ATE-EE7SBAA).
+  const totalBruto = safeParseNumber((atendimento as any)['Total bruto'] || 0);
+  if (totalBruto < 0) return null;
+
   const vendedorRaw = (atendimento.Vendedor || '').trim();
   if (!vendedorRaw) return null;
 
@@ -70,6 +76,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
 
   const detalhes: Record<string, number> = {};
   let valorTotal = 0;
+  let custoTotal = 0;
   let qtdSmartphones = 0;
   let qtdServicos = 0;
 
@@ -104,6 +111,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
 
       detalhes[categoria] = (detalhes[categoria] || 0) + valorUnitario;
       valorTotal += valorUnitario;
+      custoTotal += safeParseNumber(venda.Custo || 0) * qtd;
 
       if (categoria === 'BONIFICADO LC' || categoria === 'SUPER BONIFICADO' || categoria === 'ANATEL') {
         qtdSmartphones += qtd;
@@ -129,6 +137,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
         );
         detalhes[categoria] = (detalhes[categoria] || 0) + valorBrinde;
         valorTotal += valorBrinde;
+        custoTotal += safeParseNumber((brinde as any).Custo || 0) * qtdB;
       }
     }
 
@@ -150,6 +159,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
         );
         detalhes[categoria] = (detalhes[categoria] || 0) + valorTroca;
         valorTotal += valorTroca;
+        custoTotal += safeParseNumber((troca as any).Custo || 0) * qtdT;
       }
     }
   }
@@ -157,7 +167,9 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   if (qtdSmartphones > 0) detalhes['__qtd_smartphones'] = qtdSmartphones;
   if (qtdServicos > 0) detalhes['__qtd_servicos'] = qtdServicos;
 
-  if (valorTotal <= 0 && qtdSmartphones === 0) return null;
+  // Mantém o atendimento se houver receita oficial (totalBruto), mesmo sem item de
+  // Venda categorizado — caso de troca/garantia (GAR), recuperada via resíduo abaixo.
+  if (valorTotal <= 0 && qtdSmartphones === 0 && totalBruto <= 0) return null;
 
   // Calcular juros por categoria a partir do campo Pagamento
   const itensCat: ItemCategorizado[] = Object.entries(detalhes)
@@ -175,13 +187,29 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   }, 0);
   const desconto = safeParseNumber((atendimento as any)['Total desconto'] || 0);
 
+  // Faturamento espelha o "Total bruto" oficial do Tenfront (= o número do painel).
+  // A soma de itens só coincide com ele quando não há troca/garantia; em operações
+  // como GAR (item em Troca sem "Valor de venda") os itens subcontam a receita.
+  // Atendimentos com bruto < 0 (compra de seminovo) já foram excluídos no topo.
+  // Líquido = bruto − juros (invariante validada nas lojas sem troca, 2026-06-18).
+  const faturamento = totalBruto > 0 ? totalBruto : valorTotal + jurosTotal;
+  const liquido = faturamento - jurosTotal;
+
+  // Resíduo = receita do Total bruto que os itens não categorizaram (troca/garantia).
+  // Vai para a categoria TROCA: visível no detalhe e NÃO comissionável (nenhum
+  // calculador lê 'TROCA'), para o faturamento fechar com o Tenfront sem pagar
+  // comissão sobre valor sem categoria. Resíduo negativo (itens > líquido) é ignorado.
+  const residual = liquido - valorTotal;
+  if (residual > 1) detalhes['TROCA'] = (detalhes['TROCA'] || 0) + residual;
+
   return {
     vendedor_nome: vendedorNome,
     mes: targetMonth,
     data: parsed.isoDate,
     detalhes,
-    valor_total: valorTotal,
-    valor_bruto: safeParseNumber(atendimento['Total bruto'] || 0),
+    valor_total: liquido,
+    valor_bruto: faturamento,
+    custo: custoTotal,
     juros: jurosTotal,
     desconto,
   };

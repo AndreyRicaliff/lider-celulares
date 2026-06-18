@@ -8,6 +8,73 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 
 ---
 
+## 2026-06-18 — [fix] Faturamento passa a espelhar "Total bruto" (corrige seminovo contado como venda)
+
+**Problema:** Campina-Grande vinha com "dados a mais". Diagnóstico (`scripts/diag-campina-dup.mjs` + dump `scripts/diag-atendimento.mjs`, dados frescos da API) isolou a causa: **não é parse nem paginação** (521 atend, 521 IDs únicos). É uma **compra de seminovo registrada como venda**:
+- `ATE-EE7SBAA`: iPhone 17 Pro Max seminovo, item em `Venda` com `Valor de venda 8.300`, mas `Total bruto = −8.300` (a loja *comprou* o aparelho — saída de caixa). O `map-venda` somava `info.Venda` sem olhar o sinal → contava +8.300 de receita **e pagava comissão** ao vendedor sobre uma compra.
+- `GAR-P5NVFK7` (mesmo IMEI, a revenda): `Total bruto +8.800`, item em `Troca` sem `Valor de venda` → o código contava **0** (receita perdida).
+
+A premissa antiga no código ("itens de troca têm Valor de venda 0") era **falsa**.
+
+**Opções consideradas:**
+- A — remendar caso a caso (excluir bruto<0 e ler "Proposta" da troca) — frágil, não generaliza.
+- B — **inverter a base**: faturamento = `Total bruto` (fonte oficial); itens só fazem a quebra por categoria; resíduo (líquido − Σ itens) vai para categoria `TROCA`.
+
+**Decisão:** B. (1) `Total bruto < 0` → `return null` (compra/devolução, espelha o Tenfront). (2) `valor_bruto = Total bruto`, `valor_total = Total bruto − juros`. (3) resíduo positivo → categoria `TROCA`, **não-comissionável** (nenhum calculador lê `'TROCA'`).
+
+**Por quê:** o `Total bruto` é a verdade oficial (validada pela invariante `bruto = venda + juros` nas lojas sãs); a soma de itens só coincide quando não há troca. Resíduo em `TROCA` faz o total fechar sem pagar comissão sobre valor sem categoria — conservador no que toca dinheiro de vendedor.
+
+**Validação (simulação no cache + type-check):** lojas sãs (Natal/Monteiro/Soledade) Δ ≤ 0,01 — **zero regressão**. Campina Δ=+500 (−8.300 da compra +8.800 da revenda = resultado contábil real do seminovo). Caruaru +2.025 (receita de troca recuperada). `tsc --noEmit --strict` exit 0.
+
+**Consequências / dívidas:**
+- `custo`/`lucro` da operação de troca ficam aproximados (custo segue só itens de Venda; o resíduo TROCA não tem custo associado). Não afeta comissão (que é por categoria de venda), mas o lucro do atendimento de troca fica otimista. Anotado.
+- `TROCA` não gera comissão por padrão — se o cliente quiser comissionar venda de seminovo, é decisão futura.
+- **Não deployado** — mudança em edge function de produção aguarda branch/PR/deploy autorizado.
+
+**Como explicar em entrevista (30s):**
+> "O painel reconstruía o faturamento somando os itens de venda, então uma compra de aparelho usado (que o ERP registra com total negativo) entrava como receita positiva e ainda gerava comissão, enquanto a revenda via troca era perdida. Inverti a base: o total passa a vir do campo oficial do ERP, os itens só fazem a quebra por categoria, e o que sobra vira uma linha de troca que não comissiona. Validei que as lojas sem troca não mudam nada."
+
+**Fonte:** sessão 2026-06-18 com Ricalfiff. Decisões confirmadas via AskUserQuestion (excluir seminovo + recuperar troca).
+
+---
+
+## 2026-06-18 — [domínio] Regra de cálculo do faturamento Tenfront (fórmula reconciliada)
+
+**Problema:** o painel precisava reproduzir exatamente os números oficiais do Tenfront (Faturamento, Preço de venda, Custo, Lucro), mas faltava a fórmula confirmada — qual campo entra em cada métrica e como bruto/líquido se relacionam.
+
+**Método:** `scripts/analise-formula.mjs` lê o cache de junho (`scripts/_cache-junho.json`, zero quota) e testa cada fórmula candidata contra os valores oficiais por loja.
+
+**Confirmado com dados FRESCOS (2026-06-18, `scripts/diag-reconcile-tenfront.mjs` puxando da API ao vivo):** como junho está aberto, comparar com a tabela `OFICIAL` (snapshot de 17/jun) é inútil — os Δ ficam poluídos pelo crescimento do mês. A prova real é a **identidade contábil interna no mesmo snapshot**: `Σ Total bruto = Σ Valor de venda + juros`. Bate ao vivo em **Natal** (Δ=0,31), **Monteiro** (exato) e **Soledade** (exato) — matemática interna dos dados, independente de qualquer número oficial. Lição metodológica: validar fórmula por invariante interna, NUNCA por match contra um snapshot oficial de período aberto.
+
+**Fórmula confirmada:**
+
+| Métrica Tenfront | Fórmula |
+|---|---|
+| **① Faturamento** | `Σ "Total bruto"` por atendimento = **Líquido + Juros** |
+| **② Preço de venda (líquido)** | `Σ "Valor de venda"` dos itens de **Venda** = `① − juros` (base de comissão) |
+| **Juros (acréscimo de parcelamento)** | `Σ ("Valor com acréscimo" − "Valor informado")` dos Pagamentos |
+| **Custo** | `Σ Custo × qtd` **só dos itens de Venda** (NÃO troca/brinde) |
+| **Lucro** | `② − Custo` |
+| **Desconto** | já embutido no Valor de venda — **não soma** |
+
+**Por quê (invariantes de domínio):**
+- `Faturamento − Preço de venda = juros` — provado em Soledade (`30.318,43 − 29.269,74 = 1.048,69 = juros`). Juros é a ÚNICA diferença entre bruto e líquido.
+- O código (`map-venda.ts`) usa `valor_bruto = líquido + juros` em vez do `"Total bruto"` cru — deliberado: o campo cru é distorcido por troca (vem negativo no seminovo) e por registros GAR/garantia sem venda. Troca é forma de pagamento, não receita (regra do cliente).
+- O campo `"Total custos"` do atendimento está SEMPRE inflado (Natal +17k) porque inclui custo de itens de troca/seminovo. O custo oficial é só `Custo×qtd` dos itens de **Venda**.
+
+**Consequências / dívidas abertas:**
+- `map-venda.ts` soma custo de Brinde/Troca além de Venda. Impacto pequeno (quase sempre valor 0), mas pela regra deveria ser só Venda. Anotado, não corrigido nesta sessão (a pedido).
+- **Campina-Grande não reconcilia (confirmado ao vivo 18/jun)** — `Σ valorVenda (104.308) > Σ Total bruto (97.023)`, o que é contabilmente impossível (bruto ≥ líquido sempre). Reproduz idêntico no fetch fresco → **bug de dados/parse, não de fórmula.** Campina é a loja do JSON inválido (barras soltas); o parse resiliente está **duplicando/inflando itens de venda**. Investigar `parseTenfrontJson`/`escapeInvalidBackslashes` antes de confiar no número de Campina.
+- **Caruaru tem leve divergência (Δ 2.025) no script de diagnóstico** porque ele só soma itens de `Venda`; a loja tem brinde/troca com valor que entram no `Total bruto`. O `map-venda.ts` de produção soma brinde/troca>0, então fecha melhor — confirma que incluir brinde/troca no líquido está certo.
+- Threshold/heurísticas de categoria não afetam os totais — só a quebra por grupo.
+
+**Como explicar em entrevista (30s):**
+> "O ERP mostra Faturamento e Preço de venda e eu precisava reproduzir os dois. Reconciliei por engenharia reversa contra os números oficiais: o líquido é a soma dos valores de venda dos itens, o faturamento é o líquido mais os juros de parcelamento, e o custo/lucro só contam itens de venda — troca e brinde ficam de fora porque troca é forma de pagamento, não receita. Validei numa loja que fechou centavo a centavo nas quatro métricas."
+
+**Fonte:** sessão 2026-06-18 com Ricalfiff, via `scripts/analise-formula.mjs` sobre cache de junho.
+
+---
+
 ## 2026-05 — [diagnóstico] Entregar diagnóstico formal antes de implementar (Fase 1 → Fase 2) **[reconstruído]**
 
 **Problema:** O cliente tinha uma integração instável que "travava por tempo indeterminado". A pressão era ir direto para o fix. A causa raiz ainda era desconhecida.
@@ -410,3 +477,19 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Resultado:** Natal Bruto 269.658 ≈ Tenfront 267.253. NOTA: o "Faturamento" do **Dashboard** do Tenfront (102.518 campina) diverge do **Relatório Financeiro** do próprio Tenfront (~95K campina) e não é reproduzível com a API de atendimentos — o ERP é inconsistente entre telas. A referência auditável do nosso app é o LÍQUIDO (soma dos itens vendidos concluídos = base de comissão); juros/desconto são decomposições rastreáveis até o atendimento.
 
 **Fonte:** sessão 2026-06-17 com Ricalfiff (prints natal 267K/283K e campina dashboard 102K).
+
+---
+
+## 2026-06-17 — [faturamento] Provado: Tenfront não tem endpoint de faturamento consolidado
+
+**Problema:** ficou a hipótese de que o número do Dashboard do Tenfront (campina 102.518) viria de algum endpoint de relatório que a integração ainda não usava — valia confirmar antes de fechar a reconciliação.
+
+**Investigação (contra a fonte, `scripts/probe-tenfront-endpoints.mjs`):** com credenciais reais da campina (saldo 294 req, auth OK; `listar-atendimentos` como controle positivo), sondei **29 endpoints candidatos** em 2 levas (`faturamento`, `relatorio`, `relatorio-financeiro`, `dashboard`, `resumo`, `vendas`, `listar-*`, `sales`/`revenue`/`billing`, etc.). **Todos retornaram `404 - Endpoint inexistente`** (mensagem genérica do Tenfront p/ rota desconhecida → negativos reais, não erro de auth). Além disso, o **envelope do topo** do `listar-atendimentos` só tem `Total pages`/`Page`/`Response` — nenhum total consolidado (o "Total bruto" do `diag-faturamento` é somado client-side, não vem da API).
+
+**Decisão:** encerrar a caça ao 102.518. A API v1 do Tenfront expõe só 3 rotas (`listar-atendimentos`, `saldo-token`, `estoque-identificado-produto`); nenhuma devolve faturamento consolidado. O número do Dashboard é calculado dentro da UI do ERP, a partir de dados que a API não entrega, e é inconsistente com o próprio Relatório Financeiro deles. A verdade canônica e auditável do app é o **Líquido + Juros = Bruto** (decisão anterior), rastreável até o atendimento.
+
+**Consequências:** não há caminho técnico para reproduzir o número do Dashboard do Tenfront — fica documentado como limitação do fornecedor, não dívida nossa. Se o cliente exigir esse número específico, é conversa de definição de negócio (qual tela do ERP é a verdade) ou pedido de docs/endpoint ao Tenfront — não código.
+
+**Como explicar em entrevista (30s):** "O número do dashboard do ERP não batia. Em vez de chutar, sondei a API: provei com 29 testes que não existe endpoint que devolva esse total e que o próprio ERP se contradiz entre telas. Ancorei o app no líquido — soma auditável dos itens vendidos — com juros/desconto rastreáveis. Evidência, não achismo."
+
+**Fonte:** sessão 2026-06-17 (continuação); probe empírico contra a API Tenfront.

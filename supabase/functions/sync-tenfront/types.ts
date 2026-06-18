@@ -38,8 +38,8 @@ export type MappedVenda = {
   mes: string;
   data: string;
   detalhes: Record<string, number>;
-  valor_total: number;   // líquido = "Total bruto" − juros (= ② Tenfront, base de comissão)
-  valor_bruto: number;   // faturamento = "Total bruto" do atendimento (= ① Tenfront, com juros)
+  valor_total: number;   // líquido = Σ "Valor de venda" dos itens (= ② Tenfront, base de comissão)
+  valor_bruto: number;   // faturamento = líquido + juros de parcelamento
   custo: number;         // Σ "Custo" × qtd dos itens de Venda (= custo do Resultado por produto)
   juros: number;
   desconto: number;

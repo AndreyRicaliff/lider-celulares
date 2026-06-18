@@ -167,9 +167,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   if (qtdSmartphones > 0) detalhes['__qtd_smartphones'] = qtdSmartphones;
   if (qtdServicos > 0) detalhes['__qtd_servicos'] = qtdServicos;
 
-  // Mantém o atendimento se houver receita oficial (totalBruto), mesmo sem item de
-  // Venda categorizado — caso de troca/garantia (GAR), recuperada via resíduo abaixo.
-  if (valorTotal <= 0 && qtdSmartphones === 0 && totalBruto <= 0) return null;
+  if (valorTotal <= 0 && qtdSmartphones === 0) return null;
 
   // Calcular juros por categoria a partir do campo Pagamento
   const itensCat: ItemCategorizado[] = Object.entries(detalhes)
@@ -187,27 +185,20 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   }, 0);
   const desconto = safeParseNumber((atendimento as any)['Total desconto'] || 0);
 
-  // Faturamento espelha o "Total bruto" oficial do Tenfront (= o número do painel).
-  // A soma de itens só coincide com ele quando não há troca/garantia; em operações
-  // como GAR (item em Troca sem "Valor de venda") os itens subcontam a receita.
-  // Atendimentos com bruto < 0 (compra de seminovo) já foram excluídos no topo.
-  // Líquido = bruto − juros (invariante validada nas lojas sem troca, 2026-06-18).
-  const faturamento = totalBruto > 0 ? totalBruto : valorTotal + jurosTotal;
-  const liquido = faturamento - jurosTotal;
-
-  // Resíduo = receita do Total bruto que os itens não categorizaram (troca/garantia).
-  // Vai para a categoria TROCA: visível no detalhe e NÃO comissionável (nenhum
-  // calculador lê 'TROCA'), para o faturamento fechar com o Tenfront sem pagar
-  // comissão sobre valor sem categoria. Resíduo negativo (itens > líquido) é ignorado.
-  const residual = liquido - valorTotal;
-  if (residual > 1) detalhes['TROCA'] = (detalhes['TROCA'] || 0) + residual;
+  // Líquido = Σ "Valor de venda" dos itens (Venda + Brinde). Espelha o ② "Total preço
+  // venda produto" do Tenfront (base de comissão) — validado centavo a centavo em
+  // Campina 2026-06-18: 94.603,81. Bruto = líquido + juros de parcelamento.
+  // NÃO usar "Total bruto" cru: é um conceito diferente (dashboard) e não reproduz o ②.
+  // Compra de seminovo (Total bruto < 0) já foi excluída no topo; a revenda via troca
+  // (item em Troca sem "Valor de venda") não entra — o próprio ② do Tenfront a ignora.
+  const faturamento = valorTotal + jurosTotal;
 
   return {
     vendedor_nome: vendedorNome,
     mes: targetMonth,
     data: parsed.isoDate,
     detalhes,
-    valor_total: liquido,
+    valor_total: valorTotal,
     valor_bruto: faturamento,
     custo: custoTotal,
     juros: jurosTotal,

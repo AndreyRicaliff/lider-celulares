@@ -8,7 +8,26 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 
 ---
 
-## 2026-06-18 — [fix] Faturamento passa a espelhar "Total bruto" (corrige seminovo contado como venda)
+## 2026-06-18 — [retificação] O alvo é o ② "Preço de venda", NÃO o "Total bruto"
+
+**Contexto:** a entrada abaixo (espelhar Total bruto) partiu de premissa errada. Ao comparar com a tela **"Resultado por produto"** do Tenfront (Campina, 2026-06-18), ficou claro que o Tenfront tem DOIS conceitos:
+- **"Faturamento" (dashboard)** = 112.726,85 — inflado, inclui juros/troca/etc., **NÃO reproduzível pela API** (sondei 14 endpoints, todos 404; 14 fórmulas, nenhuma fecha).
+- **② "Total preço venda produto"** = 94.603,81 — a base de comissão, = `Σ "Valor de venda" dos itens (Venda+Brinde)`.
+
+**Decisão final:** o painel espelha o **②**. `valor_total = Σ itens` (cálculo original) **+ guard de Total bruto < 0** (exclui compra de seminovo). Revertido: "espelhar Total bruto", categoria TROCA, recuperação do GAR — tudo errado (o próprio ② do Tenfront ignora a revenda via troca).
+
+**Validação:** reconciliação centavo a centavo — `Venda+Brinde, excl. seminovo = 94.603,81 ✓EXATO`. Após reprocesso, banco de Campina: líquido = **94.603,81** (= ② oficial), custo 66.888,61 (Δ+22,50, 1 brinde). Deployado e verificado em prod.
+
+**Lição:** não assumir qual métrica do ERP é o alvo. "Faturamento" do dashboard ≠ base de comissão. Sempre reconciliar contra a tela exata que o cliente usa.
+
+**Como explicar em entrevista (30s):**
+> "O ERP mostrava dois números de receita — um 'faturamento' de dashboard, inflado e sem endpoint na API, e o 'preço de venda por produto', que é a base de comissão. Eu estava perseguindo o número errado. Reconciliei contra a tela de resultado por produto e fechei centavo a centavo: soma do valor de venda dos itens, excluindo a compra de seminovo que o ERP registra com total negativo."
+
+**Fonte:** sessão 2026-06-18 com Ricalfiff (telas do Tenfront + reconciliação fresca).
+
+---
+
+## 2026-06-18 — [fix] (SUPERADA pela retificação acima) Faturamento passa a espelhar "Total bruto"
 
 **Problema:** Campina-Grande vinha com "dados a mais". Diagnóstico (`scripts/diag-campina-dup.mjs` + dump `scripts/diag-atendimento.mjs`, dados frescos da API) isolou a causa: **não é parse nem paginação** (521 atend, 521 IDs únicos). É uma **compra de seminovo registrada como venda**:
 - `ATE-EE7SBAA`: iPhone 17 Pro Max seminovo, item em `Venda` com `Valor de venda 8.300`, mas `Total bruto = −8.300` (a loja *comprou* o aparelho — saída de caixa). O `map-venda` somava `info.Venda` sem olhar o sinal → contava +8.300 de receita **e pagava comissão** ao vendedor sobre uma compra.

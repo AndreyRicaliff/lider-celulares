@@ -21,6 +21,9 @@ Deno.serve(async (req) => {
     const dryRun = Boolean(body.dryRun);
     const force = Boolean(body.force);
     const fullYear = Boolean(body.fullYear);
+    // reprocess = refetch completo do mês corrente (sem ID-stop), para reaplicar mudanças
+    // de mapeamento a atendimentos já gravados. Combinar com loja_id para limitar quota.
+    const reprocess = Boolean(body.reprocess);
     const mes = getRequestedMonth(req, body);
     const onlyLojaId = typeof body.loja_id === 'string' ? body.loja_id : null;
     const onlyLojaIds = Array.isArray(body.loja_ids) ? (body.loja_ids as string[]) : null;
@@ -182,8 +185,9 @@ Deno.serve(async (req) => {
       }
       try {
         // force só bypassa o guard de intervalo — NÃO força full fetch (forceFullFetch fica false)
-        // para que lastSyncDate seja sempre usado e o early-stop funcione nos ciclos incrementais
-        const result = await syncLoja(internalClient, loja, mes, dryRun, false, sharedSaldo);
+        // para que lastSyncDate seja sempre usado e o early-stop funcione nos ciclos incrementais.
+        // reprocess=true força o refetch completo do mês (reaplica mapeamento ao histórico).
+        const result = await syncLoja(internalClient, loja, mes, dryRun, reprocess, sharedSaldo);
         results.push(result);
       } catch (err) {
         const msg = getErrorMessage(err);

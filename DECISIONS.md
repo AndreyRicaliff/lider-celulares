@@ -512,3 +512,26 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Como explicar em entrevista (30s):** "O número do dashboard do ERP não batia. Em vez de chutar, sondei a API: provei com 29 testes que não existe endpoint que devolva esse total e que o próprio ERP se contradiz entre telas. Ancorei o app no líquido — soma auditável dos itens vendidos — com juros/desconto rastreáveis. Evidência, não achismo."
 
 **Fonte:** sessão 2026-06-17 (continuação); probe empírico contra a API Tenfront.
+
+---
+
+## 2026-06-22 — [comissão] ANATEL como smartphone em Campina/Natal/Caruaru + VR meta prata nas 3 lojas grandes
+
+**Problema:** auditoria do motor contra o documento "Regras de comissões lojas" revelou dois gaps de lógica (não de valor):
+1. **ANATEL não comissionava** em Campina/Natal/Caruaru — `calcularComissaoCampinaNatal` somava só `BONIFICADO LC + SUPER BONIFICADO` e gravava comissão só para esses dois; vendas ANATEL nessas lojas geravam R$0, apesar de o documento definir o grupo "Smartphones = Bonificado + Super Bonificado + ANATEL" para todas as lojas (Soledade/Monteiro já faziam certo).
+2. **Bônus VR de R$300 na meta prata** estava travado em `lojaId === 'campina-grande'` (`batchCalculateCommissions.ts`), mas o documento diz que Natal e Caruaru também pagam VR 300 quando a loja bate prata.
+
+**Opções consideradas:**
+- ANATEL — A: taxa própria (novos campos de config); B: espelhar a taxa do Bonificado LC e incluir no grupo de meta.
+- VR prata — A: replicar o bloco por loja; B: remover a trava de loja (o branch `else` já é exclusivo das lojas grandes Campina/Natal/Caruaru).
+
+**Decisão:** B nos dois casos. ANATEL entra em `valorSmartphones` (meta) e comissiona à `taxaBLC`, sendo zerado junto na penalidade de película. VR 300 prata passa a valer para todo o branch não-Soledade/Monteiro. VR fixo de R$200 em Soledade **mantido** (confirmado com Ricalfiff — não era o gap que o texto do PDF sugeria).
+
+**Por quê:** o documento não define taxa separada para ANATEL — criar config órfã seria inventar regra. Espelhar o Bonificado alinha ao comportamento já correto de Soledade/Monteiro. Incluir ANATEL na meta só *aumenta* o atingimento (a soma cresce), então nenhuma comissão existente cai. A trava `campina-grande` no VR era resíduo — o branch inteiro já é das lojas que têm a regra.
+
+**Consequências:** vendas ANATEL passam a pagar comissão e contar para a meta de smartphone nas lojas grandes; recálculos de meses com ANATEL vão subir. **Valores de config (metas, %) não foram tocados** — os números do documento são demonstrativos; a fonte da verdade é a tabela `configuracoes` por loja/mês.
+
+**Como explicar em entrevista (30s):**
+> "Auditando o motor de comissão contra a spec do cliente, achei que aparelhos ANATEL eram categoria smartphone na regra mas o cálculo das lojas grandes ignorava eles — não pagava comissão nem contava pra meta. Aliei ao comportamento já correto das lojas menores em vez de inventar uma taxa nova. E corrigi um bônus de função preso a uma loja por um if hardcoded quando a regra valia para três."
+
+**Fonte:** sessão 2026-06-22 com Ricalfiff; documento "Regras de comissões lojas.pdf" (ANATEL→taxa BLC e VR Soledade mantido confirmados em conversa).

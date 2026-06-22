@@ -206,8 +206,9 @@ export function calcularComissaoCampinaNatal(
 
   const valorBonificadoLC = safeGet(totais, 'BONIFICADO LC');
   const valorSuperBonificado = safeGet(totais, 'SUPER BONIFICADO');
+  const valorAnatel = safeGet(totais, 'ANATEL');
   // Removido categorias intermediárias "SMARTPHONES E FILMES" para evitar confusão no relatório
-  const valorSmartphones = valorBonificadoLC + valorSuperBonificado;
+  const valorSmartphones = valorBonificadoLC + valorSuperBonificado + valorAnatel;
   const valorAuxiliarServicos = valorServicos;
   const metaSmartphonesAtingida = isTrainee ||
     (valorSmartphones >= (config.smartphones_meta * proporcional)) ||
@@ -239,6 +240,8 @@ export function calcularComissaoCampinaNatal(
   }
   comissoes['BONIFICADO LC'] = valorBonificadoLC * (taxaBLC / 100);
   comissoes['SUPER BONIFICADO'] = valorSuperBonificado * (taxaSB / 100);
+  // ANATEL é categoria smartphone na regra do cliente; comissiona à taxa do Bonificado LC
+  comissoes['ANATEL'] = valorAnatel * (taxaBLC / 100);
 
   const valorAcessorios = safeGet(totais, 'ACESSÓRIOS');
   let taxaAcessorios = 0;
@@ -293,6 +296,7 @@ export function calcularComissaoCampinaNatal(
   if (info.penalidadePelicula && !isTrainee) {
     comissoes['BONIFICADO LC'] = 0;
     comissoes['SUPER BONIFICADO'] = 0;
+    comissoes['ANATEL'] = 0;
     comissoes['SMARTPHONES E FILMES'] = 0;
     comissoes.PELÍCULA = 0;
   }

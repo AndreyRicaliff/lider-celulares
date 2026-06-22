@@ -535,3 +535,23 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 > "Auditando o motor de comissão contra a spec do cliente, achei que aparelhos ANATEL eram categoria smartphone na regra mas o cálculo das lojas grandes ignorava eles — não pagava comissão nem contava pra meta. Aliei ao comportamento já correto das lojas menores em vez de inventar uma taxa nova. E corrigi um bônus de função preso a uma loja por um if hardcoded quando a regra valia para três."
 
 **Fonte:** sessão 2026-06-22 com Ricalfiff; documento "Regras de comissões lojas.pdf" (ANATEL→taxa BLC e VR Soledade mantido confirmados em conversa).
+
+---
+
+## 2026-06-22 — [comissão] Penalidade de película por loja (Caruaru não perde smartphone) + Assistência Técnica em Monteiro
+
+**Problema:** auditoria de lógica completa loja-a-loja contra o documento revelou mais dois pontos onde o código tinha decisão deliberada conflitando com a spec:
+1. **Penalidade de película zerava smartphone em Caruaru.** O documento é explícito por loja: Campina Grande e Natal — "não ganha nada de películas **e perde a comissão de Smartphones**"; Caruaru — "não ganha nada de películas" (sem perder smartphone). O código aplicava o zeramento de smartphone para todas as lojas do branch (`comissaoCalculator.ts`), porque `isLojaNatalLike` agrupa Natal **e** Caruaru.
+2. **Assistência Técnica era ignorada em Monteiro.** O código pulava AT com `if (!isMonteiro)`, mas o documento lista Monteiro com "ASSISTÊNCIA TÉCNICA: 10%" e o print de config de Monteiro traz o campo preenchido.
+
+**Decisão (confirmada com Ricalfiff):** "seguir estritamente a regra de cada loja, não é regra global" e "seguir o PDF".
+1. Zeramento de smartphone por película passou a ser condicionado a `loja === 'campina-grande' || loja === 'natal'`. Caruaru continua zerando só a película (via `taxaPelicula = 0`), preservando a comissão de smartphone.
+2. Removido o `if (!isMonteiro)` — Monteiro comissiona AT como as demais. Adicionado `assistencia_tecnica_comissao: 10.0` ao `DEFAULT_CONFIG_MONTEIRO` para evitar `NaN` quando o banco não tiver o campo (o valor da tabela `configuracoes` sempre prevalece).
+
+**Por quê:** o documento trata as lojas como configurações distintas; assumir comportamento global onde a spec diferencia é inventar regra. A omissão da frase "perde smartphone" em Caruaru é deliberada (CG e Natal a têm, lado a lado). Para Monteiro, o cliente confirmou que a AT vale — a exclusão no código era resíduo.
+
+**Consequências:** vendedores de Caruaru com película abaixo da mínima mantêm a comissão de smartphone; Monteiro passa a pagar AT. Recálculos de meses fechados nessas duas lojas podem mudar. Valores de config seguem intocados.
+
+**Como explicar em entrevista (30s):** "Auditando o motor por loja, achei duas regras tratadas como globais que a spec diferencia: a penalidade de película que tira o smartphone existe em Campina e Natal mas não em Caruaru, e o código zerava as três porque agrupava Natal e Caruaru no mesmo helper. Separei a regra por loja. E reativei a Assistência Técnica em Monteiro, que estava excluída por um if antigo contra a spec atual do cliente."
+
+**Fonte:** sessão 2026-06-22 com Ricalfiff; auditoria de lógica completa contra "Regras de comissões lojas.pdf" (decisões confirmadas em conversa).

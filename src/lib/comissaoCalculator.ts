@@ -26,7 +26,6 @@ export function calcularComissaoSoledadeMonteiro(
   const info = { atingiuFase3Servico: false };
   const proporcional = (colaborador.proporcional_meta || 100) / 100;
   const isTrainee = colaborador.cargo === 'Trainee';
-  const isMonteiro = colaborador.loja_id === 'monteiro';
 
   // Geral
   comissoes.GERAL = safeGet(totais, 'GERAL') * (config.geral_comissao / 100);
@@ -58,10 +57,8 @@ export function calcularComissaoSoledadeMonteiro(
     }
   }
 
-  // Assistência Técnica (apenas Soledade)
-  if (!isMonteiro) {
-    comissoes['ASSIST. TÉCNICA'] = safeGet(totais, 'ASSISTÊNCIA TÉCNICA') * (config.assistencia_tecnica_comissao / 100);
-  }
+  // Assistência Técnica (Soledade e Monteiro — conforme regra por loja do documento)
+  comissoes['ASSIST. TÉCNICA'] = safeGet(totais, 'ASSISTÊNCIA TÉCNICA') * (config.assistencia_tecnica_comissao / 100);
 
   // Acessórios: meta única com above/below (sem penalidade)
   const valorAcessorios = safeGet(totais, 'ACESSÓRIOS');
@@ -293,7 +290,9 @@ export function calcularComissaoCampinaNatal(
   comissoes['PROTEÇÃO LÍDER'] = valorPL * (taxaServicos / 100);
   comissoes['GARANTIA ESTENDIDA'] = valorGE * (taxaServicos / 100);
 
-  if (info.penalidadePelicula && !isTrainee) {
+  // Penalidade de smartphone por película só em CG e Natal; Caruaru perde apenas a película (regra por loja)
+  const perdeSmartphonePorPelicula = loja === 'campina-grande' || loja === 'natal';
+  if (info.penalidadePelicula && !isTrainee && perdeSmartphonePorPelicula) {
     comissoes['BONIFICADO LC'] = 0;
     comissoes['SUPER BONIFICADO'] = 0;
     comissoes['ANATEL'] = 0;

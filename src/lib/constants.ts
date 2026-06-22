@@ -63,6 +63,7 @@ export const DEFAULT_CONFIG_SOLEDADE = {
 
 export const DEFAULT_CONFIG_MONTEIRO = {
   geral_comissao: 1.0,
+  assistencia_tecnica_comissao: 10.0,
   smartphones_meta: 30000,
   smartphones_comissao_meta_batida: 1.0,
   smartphones_comissao_abaixo_meta: 0.5,

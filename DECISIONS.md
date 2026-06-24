@@ -555,3 +555,33 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Como explicar em entrevista (30s):** "Auditando o motor por loja, achei duas regras tratadas como globais que a spec diferencia: a penalidade de película que tira o smartphone existe em Campina e Natal mas não em Caruaru, e o código zerava as três porque agrupava Natal e Caruaru no mesmo helper. Separei a regra por loja. E reativei a Assistência Técnica em Monteiro, que estava excluída por um if antigo contra a spec atual do cliente."
 
 **Fonte:** sessão 2026-06-22 com Ricalfiff; auditoria de lógica completa contra "Regras de comissões lojas.pdf" (decisões confirmadas em conversa).
+
+---
+
+## 2026-06-24 — [faturamento] Definição oficial do "Faturamento" do dashboard Tenfront (resposta do cliente)
+
+**Problema:** desde 2026-06-17 ficou em aberto o que exatamente compõe o "Faturamento" do dashboard do Tenfront (provamos que não há endpoint consolidado e que o ERP se contradiz entre telas). O cliente respondeu formalmente as 5 perguntas.
+
+**Definição confirmada pelo cliente:**
+1. **Faturamento = "Total faturando em vendas" (resultado por atendimento) + faturamento de troca inteligente + faturamento de ordem de serviço.** Três componentes.
+2. **Total bruto negativo** (compra de seminovo de fornecedor, ex. ATE-EE7SBAA / iPhone 17 Pro Max / "Leunivan" / −8.300): NÃO entra no faturamento; é **abatido do lucro** no dashboard. "Faturamento é composto apenas por entradas."
+3. **GAR** (garantia, ex. GAR-P5NVFK7): NÃO fatura de novo — quando a garantia é acionada ela **substitui** o faturamento; só aumenta se o cliente **pagar a mais** na garantia.
+4. **Faturamento ≠ "Total preço venda produto"**: o resultado por produto usa só preço de venda, **desconsidera as taxas**; o faturamento **inclui as taxas** (juros de parcelamento).
+5. **Não há endpoint** que devolva o faturamento consolidado; dá para compor com os endpoints de **vendas realizadas + ordem de serviço**.
+
+**Conferência contra o código (sync-tenfront/map-venda.ts):** as respostas **validam 4 dos 5 pontos** do nosso pipeline:
+- Negativos excluídos (`if totalBruto < 0 return null`) ✓ = ponto 2.
+- Cancelados excluídos ✓.
+- Troca inteligente incluída (itens em `Troca` com `Valor de venda`) ✓ = parte do ponto 1.
+- `valor_bruto = líquido + juros` ✓ = ponto 4 (faturamento inclui taxas; o ② líquido é a base de comissão sem taxas).
+- **GAR já correto por construção** (ponto 3): o único GAR de junho (GAR-JR3ADO9, Caruaru, R$ 2.049,99) traz no `detalhes_brutos` apenas uma `Troca` com `"Proposta"` e **sem** `"Valor de venda"` → `valorTroca = 0` → atendimento descartado em `valorTotal <= 0`. Pagamento a mais na garantia entraria como item/pagamento positivo e seria capturado.
+
+**Gap real (ponto 1, componente OS):** **Ordem de Serviço não chega no `listar-atendimentos`** — 0 registros OS em 312 atendimentos de junho (5 lojas), todos `ATE-` exceto 1 `GAR-`. Logo o nosso "bruto" cobre **vendas + troca**, mas **não inclui OS**. Por isso ele não bate (fica abaixo) com o "Faturamento" do dashboard. O probe de endpoints de 2026-06-17 testou faturamento/venda/sales/revenue/billing (todos 404) mas **não testou um endpoint de ordem de serviço** — caminho não explorado.
+
+**Decisão:** documentar a definição e a limitação (comentário em `map-venda.ts` + este ADR). **Não** alterar o cálculo agora: incluir OS exige descobrir/validar um endpoint Tenfront de ordem de serviço (precisa de credencial para sondar) e medir a materialidade. Mantém-se o líquido (② / base de comissão) como verdade auditável do app; o "bruto" é vendas+troca+juros, explicitamente sem OS.
+
+**Consequências / pendências:** (1) sondar endpoint de OS (`ordem-servico`, `listar-ordem-servico`, etc.) com credencial real; (2) se existir e for material, criar ingestão de OS e somar ao faturamento (sem afetar comissão — OS é faturamento, não necessariamente base de comissão); (3) decidir com o cliente se o app deve reproduzir o dashboard (vendas+troca+OS) ou manter o líquido auditável como referência.
+
+**Como explicar em entrevista (30s):** "O cliente fechou a definição do faturamento do ERP: vendas + troca + ordem de serviço, só entradas, com taxas, e garantia não soma. Conferi contra nosso pipeline e 4 dos 5 pontos já batiam — inclusive a garantia, que é descartada naturalmente porque a troca de garantia não tem valor de venda. O único componente que falta é ordem de serviço, que provei não vir no endpoint de atendimentos. Documentei a limitação em vez de inventar o número."
+
+**Fonte:** sessão 2026-06-24 com Ricalfiff; respostas formais do cliente (5 perguntas) + inspeção dos backups reais de junho (`scripts/reproc-backup-*.json`).

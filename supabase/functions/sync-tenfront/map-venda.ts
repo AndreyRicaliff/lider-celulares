@@ -191,6 +191,11 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   // NÃO usar "Total bruto" cru: é um conceito diferente (dashboard) e não reproduz o ②.
   // Compra de seminovo (Total bruto < 0) já foi excluída no topo; a revenda via troca
   // (item em Troca sem "Valor de venda") não entra — o próprio ② do Tenfront a ignora.
+  //
+  // LIMITAÇÃO (confirmada com o cliente 2026-06-24): o "Faturamento" do dashboard Tenfront
+  // = vendas + troca inteligente + ORDEM DE SERVIÇO. Ordens de serviço NÃO chegam no
+  // listar-atendimentos (0 OS em 312 atendimentos de junho), então este "bruto" cobre só
+  // vendas + troca. GAR não soma (a troca de garantia traz "Proposta", não "Valor de venda").
   const faturamento = valorTotal + jurosTotal;
 
   return {

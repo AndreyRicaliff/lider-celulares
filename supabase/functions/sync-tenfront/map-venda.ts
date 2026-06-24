@@ -192,10 +192,13 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   // Compra de seminovo (Total bruto < 0) já foi excluída no topo; a revenda via troca
   // (item em Troca sem "Valor de venda") não entra — o próprio ② do Tenfront a ignora.
   //
-  // LIMITAÇÃO (confirmada com o cliente 2026-06-24): o "Faturamento" do dashboard Tenfront
-  // = vendas + troca inteligente + ORDEM DE SERVIÇO. Ordens de serviço NÃO chegam no
-  // listar-atendimentos (0 OS em 312 atendimentos de junho), então este "bruto" cobre só
-  // vendas + troca. GAR não soma (a troca de garantia traz "Proposta", não "Valor de venda").
+  // NOTA (cliente 2026-06-24): o "Faturamento" do dashboard Tenfront = vendas + troca
+  // inteligente + ORDEM DE SERVIÇO. OS não vem no listar-atendimentos; tem endpoint próprio
+  // (POST /ordem-de-servico, receita em "Serviços realizados"[].Valor). Sondado em 2026-06-24:
+  // junho tem 3 OS (só Natal) e TODAS com Valor 0 (reparos internos/esteira) → OS = R$0.
+  // Logo este "bruto" (vendas + troca + juros) já cobre o faturamento real. GAR não soma
+  // (a troca de garantia traz "Proposta", não "Valor de venda"). Se OS virar material,
+  // ingerir de /ordem-de-servico (status finalizado) e somar — não afeta comissão.
   const faturamento = valorTotal + jurosTotal;
 
   return {

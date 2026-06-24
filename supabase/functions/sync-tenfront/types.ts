@@ -9,6 +9,7 @@ export type AtendimentoVenda = {
   Quantidade?: number;
   Desconto?: number;
   'Valor de venda': number;
+  Custo?: number;
   IMEI?: string;
   Fornecedor?: string;
 };
@@ -21,6 +22,8 @@ export type Atendimento = {
   Atendente?: string;
   Status?: string;
   'Total bruto'?: number;
+  'Total custos'?: number;
+  'Total lucro'?: number;
   'Total desconto'?: number;
 };
 
@@ -35,8 +38,9 @@ export type MappedVenda = {
   mes: string;
   data: string;
   detalhes: Record<string, number>;
-  valor_total: number;
-  valor_bruto: number;
+  valor_total: number;   // líquido = Σ "Valor de venda" dos itens (= ② Tenfront, base de comissão)
+  valor_bruto: number;   // faturamento = líquido + juros de parcelamento
+  custo: number;         // Σ "Custo" × qtd dos itens de Venda (= custo do Resultado por produto)
   juros: number;
   desconto: number;
 };

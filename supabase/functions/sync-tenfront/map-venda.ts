@@ -62,6 +62,12 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   const status = (atendimento.Status || '').trim().toLowerCase();
   if (status.includes('cancel') || status.includes('exclu')) return null;
 
+  // Total bruto < 0 = compra de seminovo / devolução (saída de caixa), não venda.
+  // O Tenfront registra essas operações com bruto negativo; espelhamos excluindo-as
+  // do faturamento e da comissão (confirmado com Ricalfiff 2026-06-18, ATE-EE7SBAA).
+  const totalBruto = safeParseNumber((atendimento as any)['Total bruto'] || 0);
+  if (totalBruto < 0) return null;
+
   const vendedorRaw = (atendimento.Vendedor || '').trim();
   if (!vendedorRaw) return null;
 
@@ -70,6 +76,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
 
   const detalhes: Record<string, number> = {};
   let valorTotal = 0;
+  let custoTotal = 0;
   let qtdSmartphones = 0;
   let qtdServicos = 0;
 
@@ -104,6 +111,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
 
       detalhes[categoria] = (detalhes[categoria] || 0) + valorUnitario;
       valorTotal += valorUnitario;
+      custoTotal += safeParseNumber(venda.Custo || 0) * qtd;
 
       if (categoria === 'BONIFICADO LC' || categoria === 'SUPER BONIFICADO' || categoria === 'ANATEL') {
         qtdSmartphones += qtd;
@@ -129,6 +137,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
         );
         detalhes[categoria] = (detalhes[categoria] || 0) + valorBrinde;
         valorTotal += valorBrinde;
+        custoTotal += safeParseNumber((brinde as any).Custo || 0) * qtdB;
       }
     }
 
@@ -150,6 +159,7 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
         );
         detalhes[categoria] = (detalhes[categoria] || 0) + valorTroca;
         valorTotal += valorTroca;
+        custoTotal += safeParseNumber((troca as any).Custo || 0) * qtdT;
       }
     }
   }
@@ -175,13 +185,30 @@ export const mapAtendimentoToVenda = (atendimento: Atendimento & { LojaId?: stri
   }, 0);
   const desconto = safeParseNumber((atendimento as any)['Total desconto'] || 0);
 
+  // Líquido = Σ "Valor de venda" dos itens (Venda + Brinde). Espelha o ② "Total preço
+  // venda produto" do Tenfront (base de comissão) — validado centavo a centavo em
+  // Campina 2026-06-18: 94.603,81. Bruto = líquido + juros de parcelamento.
+  // NÃO usar "Total bruto" cru: é um conceito diferente (dashboard) e não reproduz o ②.
+  // Compra de seminovo (Total bruto < 0) já foi excluída no topo; a revenda via troca
+  // (item em Troca sem "Valor de venda") não entra — o próprio ② do Tenfront a ignora.
+  //
+  // NOTA (cliente 2026-06-24): o "Faturamento" do dashboard Tenfront = vendas + troca
+  // inteligente + ORDEM DE SERVIÇO. OS não vem no listar-atendimentos; tem endpoint próprio
+  // (POST /ordem-de-servico, receita em "Serviços realizados"[].Valor). Sondado em 2026-06-24:
+  // junho tem 3 OS (só Natal) e TODAS com Valor 0 (reparos internos/esteira) → OS = R$0.
+  // Logo este "bruto" (vendas + troca + juros) já cobre o faturamento real. GAR não soma
+  // (a troca de garantia traz "Proposta", não "Valor de venda"). Se OS virar material,
+  // ingerir de /ordem-de-servico (status finalizado) e somar — não afeta comissão.
+  const faturamento = valorTotal + jurosTotal;
+
   return {
     vendedor_nome: vendedorNome,
     mes: targetMonth,
     data: parsed.isoDate,
     detalhes,
     valor_total: valorTotal,
-    valor_bruto: safeParseNumber(atendimento['Total bruto'] || 0),
+    valor_bruto: faturamento,
+    custo: custoTotal,
     juros: jurosTotal,
     desconto,
   };

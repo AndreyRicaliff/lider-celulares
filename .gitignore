@@ -43,3 +43,4 @@ scripts/ACESSOS-LIDER.txt
 scripts/reproc-backup-*.json
 scripts/acessos-*.json
 deno.lock
+_cache-junho.json

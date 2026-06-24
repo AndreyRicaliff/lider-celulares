@@ -8,6 +8,92 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 
 ---
 
+## 2026-06-18 — [retificação] O alvo é o ② "Preço de venda", NÃO o "Total bruto"
+
+**Contexto:** a entrada abaixo (espelhar Total bruto) partiu de premissa errada. Ao comparar com a tela **"Resultado por produto"** do Tenfront (Campina, 2026-06-18), ficou claro que o Tenfront tem DOIS conceitos:
+- **"Faturamento" (dashboard)** = 112.726,85 — inflado, inclui juros/troca/etc., **NÃO reproduzível pela API** (sondei 14 endpoints, todos 404; 14 fórmulas, nenhuma fecha).
+- **② "Total preço venda produto"** = 94.603,81 — a base de comissão, = `Σ "Valor de venda" dos itens (Venda+Brinde)`.
+
+**Decisão final:** o painel espelha o **②**. `valor_total = Σ itens` (cálculo original) **+ guard de Total bruto < 0** (exclui compra de seminovo). Revertido: "espelhar Total bruto", categoria TROCA, recuperação do GAR — tudo errado (o próprio ② do Tenfront ignora a revenda via troca).
+
+**Validação:** reconciliação centavo a centavo — `Venda+Brinde, excl. seminovo = 94.603,81 ✓EXATO`. Após reprocesso, banco de Campina: líquido = **94.603,81** (= ② oficial), custo 66.888,61 (Δ+22,50, 1 brinde). Deployado e verificado em prod.
+
+**Lição:** não assumir qual métrica do ERP é o alvo. "Faturamento" do dashboard ≠ base de comissão. Sempre reconciliar contra a tela exata que o cliente usa.
+
+**Como explicar em entrevista (30s):**
+> "O ERP mostrava dois números de receita — um 'faturamento' de dashboard, inflado e sem endpoint na API, e o 'preço de venda por produto', que é a base de comissão. Eu estava perseguindo o número errado. Reconciliei contra a tela de resultado por produto e fechei centavo a centavo: soma do valor de venda dos itens, excluindo a compra de seminovo que o ERP registra com total negativo."
+
+**Fonte:** sessão 2026-06-18 com Ricalfiff (telas do Tenfront + reconciliação fresca).
+
+---
+
+## 2026-06-18 — [fix] (SUPERADA pela retificação acima) Faturamento passa a espelhar "Total bruto"
+
+**Problema:** Campina-Grande vinha com "dados a mais". Diagnóstico (`scripts/diag-campina-dup.mjs` + dump `scripts/diag-atendimento.mjs`, dados frescos da API) isolou a causa: **não é parse nem paginação** (521 atend, 521 IDs únicos). É uma **compra de seminovo registrada como venda**:
+- `ATE-EE7SBAA`: iPhone 17 Pro Max seminovo, item em `Venda` com `Valor de venda 8.300`, mas `Total bruto = −8.300` (a loja *comprou* o aparelho — saída de caixa). O `map-venda` somava `info.Venda` sem olhar o sinal → contava +8.300 de receita **e pagava comissão** ao vendedor sobre uma compra.
+- `GAR-P5NVFK7` (mesmo IMEI, a revenda): `Total bruto +8.800`, item em `Troca` sem `Valor de venda` → o código contava **0** (receita perdida).
+
+A premissa antiga no código ("itens de troca têm Valor de venda 0") era **falsa**.
+
+**Opções consideradas:**
+- A — remendar caso a caso (excluir bruto<0 e ler "Proposta" da troca) — frágil, não generaliza.
+- B — **inverter a base**: faturamento = `Total bruto` (fonte oficial); itens só fazem a quebra por categoria; resíduo (líquido − Σ itens) vai para categoria `TROCA`.
+
+**Decisão:** B. (1) `Total bruto < 0` → `return null` (compra/devolução, espelha o Tenfront). (2) `valor_bruto = Total bruto`, `valor_total = Total bruto − juros`. (3) resíduo positivo → categoria `TROCA`, **não-comissionável** (nenhum calculador lê `'TROCA'`).
+
+**Por quê:** o `Total bruto` é a verdade oficial (validada pela invariante `bruto = venda + juros` nas lojas sãs); a soma de itens só coincide quando não há troca. Resíduo em `TROCA` faz o total fechar sem pagar comissão sobre valor sem categoria — conservador no que toca dinheiro de vendedor.
+
+**Validação (simulação no cache + type-check):** lojas sãs (Natal/Monteiro/Soledade) Δ ≤ 0,01 — **zero regressão**. Campina Δ=+500 (−8.300 da compra +8.800 da revenda = resultado contábil real do seminovo). Caruaru +2.025 (receita de troca recuperada). `tsc --noEmit --strict` exit 0.
+
+**Consequências / dívidas:**
+- `custo`/`lucro` da operação de troca ficam aproximados (custo segue só itens de Venda; o resíduo TROCA não tem custo associado). Não afeta comissão (que é por categoria de venda), mas o lucro do atendimento de troca fica otimista. Anotado.
+- `TROCA` não gera comissão por padrão — se o cliente quiser comissionar venda de seminovo, é decisão futura.
+- **Não deployado** — mudança em edge function de produção aguarda branch/PR/deploy autorizado.
+
+**Como explicar em entrevista (30s):**
+> "O painel reconstruía o faturamento somando os itens de venda, então uma compra de aparelho usado (que o ERP registra com total negativo) entrava como receita positiva e ainda gerava comissão, enquanto a revenda via troca era perdida. Inverti a base: o total passa a vir do campo oficial do ERP, os itens só fazem a quebra por categoria, e o que sobra vira uma linha de troca que não comissiona. Validei que as lojas sem troca não mudam nada."
+
+**Fonte:** sessão 2026-06-18 com Ricalfiff. Decisões confirmadas via AskUserQuestion (excluir seminovo + recuperar troca).
+
+---
+
+## 2026-06-18 — [domínio] Regra de cálculo do faturamento Tenfront (fórmula reconciliada)
+
+**Problema:** o painel precisava reproduzir exatamente os números oficiais do Tenfront (Faturamento, Preço de venda, Custo, Lucro), mas faltava a fórmula confirmada — qual campo entra em cada métrica e como bruto/líquido se relacionam.
+
+**Método:** `scripts/analise-formula.mjs` lê o cache de junho (`scripts/_cache-junho.json`, zero quota) e testa cada fórmula candidata contra os valores oficiais por loja.
+
+**Confirmado com dados FRESCOS (2026-06-18, `scripts/diag-reconcile-tenfront.mjs` puxando da API ao vivo):** como junho está aberto, comparar com a tabela `OFICIAL` (snapshot de 17/jun) é inútil — os Δ ficam poluídos pelo crescimento do mês. A prova real é a **identidade contábil interna no mesmo snapshot**: `Σ Total bruto = Σ Valor de venda + juros`. Bate ao vivo em **Natal** (Δ=0,31), **Monteiro** (exato) e **Soledade** (exato) — matemática interna dos dados, independente de qualquer número oficial. Lição metodológica: validar fórmula por invariante interna, NUNCA por match contra um snapshot oficial de período aberto.
+
+**Fórmula confirmada:**
+
+| Métrica Tenfront | Fórmula |
+|---|---|
+| **① Faturamento** | `Σ "Total bruto"` por atendimento = **Líquido + Juros** |
+| **② Preço de venda (líquido)** | `Σ "Valor de venda"` dos itens de **Venda** = `① − juros` (base de comissão) |
+| **Juros (acréscimo de parcelamento)** | `Σ ("Valor com acréscimo" − "Valor informado")` dos Pagamentos |
+| **Custo** | `Σ Custo × qtd` **só dos itens de Venda** (NÃO troca/brinde) |
+| **Lucro** | `② − Custo` |
+| **Desconto** | já embutido no Valor de venda — **não soma** |
+
+**Por quê (invariantes de domínio):**
+- `Faturamento − Preço de venda = juros` — provado em Soledade (`30.318,43 − 29.269,74 = 1.048,69 = juros`). Juros é a ÚNICA diferença entre bruto e líquido.
+- O código (`map-venda.ts`) usa `valor_bruto = líquido + juros` em vez do `"Total bruto"` cru — deliberado: o campo cru é distorcido por troca (vem negativo no seminovo) e por registros GAR/garantia sem venda. Troca é forma de pagamento, não receita (regra do cliente).
+- O campo `"Total custos"` do atendimento está SEMPRE inflado (Natal +17k) porque inclui custo de itens de troca/seminovo. O custo oficial é só `Custo×qtd` dos itens de **Venda**.
+
+**Consequências / dívidas abertas:**
+- `map-venda.ts` soma custo de Brinde/Troca além de Venda. Impacto pequeno (quase sempre valor 0), mas pela regra deveria ser só Venda. Anotado, não corrigido nesta sessão (a pedido).
+- **Campina-Grande não reconcilia (confirmado ao vivo 18/jun)** — `Σ valorVenda (104.308) > Σ Total bruto (97.023)`, o que é contabilmente impossível (bruto ≥ líquido sempre). Reproduz idêntico no fetch fresco → **bug de dados/parse, não de fórmula.** Campina é a loja do JSON inválido (barras soltas); o parse resiliente está **duplicando/inflando itens de venda**. Investigar `parseTenfrontJson`/`escapeInvalidBackslashes` antes de confiar no número de Campina.
+- **Caruaru tem leve divergência (Δ 2.025) no script de diagnóstico** porque ele só soma itens de `Venda`; a loja tem brinde/troca com valor que entram no `Total bruto`. O `map-venda.ts` de produção soma brinde/troca>0, então fecha melhor — confirma que incluir brinde/troca no líquido está certo.
+- Threshold/heurísticas de categoria não afetam os totais — só a quebra por grupo.
+
+**Como explicar em entrevista (30s):**
+> "O ERP mostra Faturamento e Preço de venda e eu precisava reproduzir os dois. Reconciliei por engenharia reversa contra os números oficiais: o líquido é a soma dos valores de venda dos itens, o faturamento é o líquido mais os juros de parcelamento, e o custo/lucro só contam itens de venda — troca e brinde ficam de fora porque troca é forma de pagamento, não receita. Validei numa loja que fechou centavo a centavo nas quatro métricas."
+
+**Fonte:** sessão 2026-06-18 com Ricalfiff, via `scripts/analise-formula.mjs` sobre cache de junho.
+
+---
+
 ## 2026-05 — [diagnóstico] Entregar diagnóstico formal antes de implementar (Fase 1 → Fase 2) **[reconstruído]**
 
 **Problema:** O cliente tinha uma integração instável que "travava por tempo indeterminado". A pressão era ir direto para o fix. A causa raiz ainda era desconhecida.
@@ -410,3 +496,94 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Resultado:** Natal Bruto 269.658 ≈ Tenfront 267.253. NOTA: o "Faturamento" do **Dashboard** do Tenfront (102.518 campina) diverge do **Relatório Financeiro** do próprio Tenfront (~95K campina) e não é reproduzível com a API de atendimentos — o ERP é inconsistente entre telas. A referência auditável do nosso app é o LÍQUIDO (soma dos itens vendidos concluídos = base de comissão); juros/desconto são decomposições rastreáveis até o atendimento.
 
 **Fonte:** sessão 2026-06-17 com Ricalfiff (prints natal 267K/283K e campina dashboard 102K).
+
+---
+
+## 2026-06-17 — [faturamento] Provado: Tenfront não tem endpoint de faturamento consolidado
+
+**Problema:** ficou a hipótese de que o número do Dashboard do Tenfront (campina 102.518) viria de algum endpoint de relatório que a integração ainda não usava — valia confirmar antes de fechar a reconciliação.
+
+**Investigação (contra a fonte, `scripts/probe-tenfront-endpoints.mjs`):** com credenciais reais da campina (saldo 294 req, auth OK; `listar-atendimentos` como controle positivo), sondei **29 endpoints candidatos** em 2 levas (`faturamento`, `relatorio`, `relatorio-financeiro`, `dashboard`, `resumo`, `vendas`, `listar-*`, `sales`/`revenue`/`billing`, etc.). **Todos retornaram `404 - Endpoint inexistente`** (mensagem genérica do Tenfront p/ rota desconhecida → negativos reais, não erro de auth). Além disso, o **envelope do topo** do `listar-atendimentos` só tem `Total pages`/`Page`/`Response` — nenhum total consolidado (o "Total bruto" do `diag-faturamento` é somado client-side, não vem da API).
+
+**Decisão:** encerrar a caça ao 102.518. A API v1 do Tenfront expõe só 3 rotas (`listar-atendimentos`, `saldo-token`, `estoque-identificado-produto`); nenhuma devolve faturamento consolidado. O número do Dashboard é calculado dentro da UI do ERP, a partir de dados que a API não entrega, e é inconsistente com o próprio Relatório Financeiro deles. A verdade canônica e auditável do app é o **Líquido + Juros = Bruto** (decisão anterior), rastreável até o atendimento.
+
+**Consequências:** não há caminho técnico para reproduzir o número do Dashboard do Tenfront — fica documentado como limitação do fornecedor, não dívida nossa. Se o cliente exigir esse número específico, é conversa de definição de negócio (qual tela do ERP é a verdade) ou pedido de docs/endpoint ao Tenfront — não código.
+
+**Como explicar em entrevista (30s):** "O número do dashboard do ERP não batia. Em vez de chutar, sondei a API: provei com 29 testes que não existe endpoint que devolva esse total e que o próprio ERP se contradiz entre telas. Ancorei o app no líquido — soma auditável dos itens vendidos — com juros/desconto rastreáveis. Evidência, não achismo."
+
+**Fonte:** sessão 2026-06-17 (continuação); probe empírico contra a API Tenfront.
+
+---
+
+## 2026-06-22 — [comissão] ANATEL como smartphone em Campina/Natal/Caruaru + VR meta prata nas 3 lojas grandes
+
+**Problema:** auditoria do motor contra o documento "Regras de comissões lojas" revelou dois gaps de lógica (não de valor):
+1. **ANATEL não comissionava** em Campina/Natal/Caruaru — `calcularComissaoCampinaNatal` somava só `BONIFICADO LC + SUPER BONIFICADO` e gravava comissão só para esses dois; vendas ANATEL nessas lojas geravam R$0, apesar de o documento definir o grupo "Smartphones = Bonificado + Super Bonificado + ANATEL" para todas as lojas (Soledade/Monteiro já faziam certo).
+2. **Bônus VR de R$300 na meta prata** estava travado em `lojaId === 'campina-grande'` (`batchCalculateCommissions.ts`), mas o documento diz que Natal e Caruaru também pagam VR 300 quando a loja bate prata.
+
+**Opções consideradas:**
+- ANATEL — A: taxa própria (novos campos de config); B: espelhar a taxa do Bonificado LC e incluir no grupo de meta.
+- VR prata — A: replicar o bloco por loja; B: remover a trava de loja (o branch `else` já é exclusivo das lojas grandes Campina/Natal/Caruaru).
+
+**Decisão:** B nos dois casos. ANATEL entra em `valorSmartphones` (meta) e comissiona à `taxaBLC`, sendo zerado junto na penalidade de película. VR 300 prata passa a valer para todo o branch não-Soledade/Monteiro. VR fixo de R$200 em Soledade **mantido** (confirmado com Ricalfiff — não era o gap que o texto do PDF sugeria).
+
+**Por quê:** o documento não define taxa separada para ANATEL — criar config órfã seria inventar regra. Espelhar o Bonificado alinha ao comportamento já correto de Soledade/Monteiro. Incluir ANATEL na meta só *aumenta* o atingimento (a soma cresce), então nenhuma comissão existente cai. A trava `campina-grande` no VR era resíduo — o branch inteiro já é das lojas que têm a regra.
+
+**Consequências:** vendas ANATEL passam a pagar comissão e contar para a meta de smartphone nas lojas grandes; recálculos de meses com ANATEL vão subir. **Valores de config (metas, %) não foram tocados** — os números do documento são demonstrativos; a fonte da verdade é a tabela `configuracoes` por loja/mês.
+
+**Como explicar em entrevista (30s):**
+> "Auditando o motor de comissão contra a spec do cliente, achei que aparelhos ANATEL eram categoria smartphone na regra mas o cálculo das lojas grandes ignorava eles — não pagava comissão nem contava pra meta. Aliei ao comportamento já correto das lojas menores em vez de inventar uma taxa nova. E corrigi um bônus de função preso a uma loja por um if hardcoded quando a regra valia para três."
+
+**Fonte:** sessão 2026-06-22 com Ricalfiff; documento "Regras de comissões lojas.pdf" (ANATEL→taxa BLC e VR Soledade mantido confirmados em conversa).
+
+---
+
+## 2026-06-22 — [comissão] Penalidade de película por loja (Caruaru não perde smartphone) + Assistência Técnica em Monteiro
+
+**Problema:** auditoria de lógica completa loja-a-loja contra o documento revelou mais dois pontos onde o código tinha decisão deliberada conflitando com a spec:
+1. **Penalidade de película zerava smartphone em Caruaru.** O documento é explícito por loja: Campina Grande e Natal — "não ganha nada de películas **e perde a comissão de Smartphones**"; Caruaru — "não ganha nada de películas" (sem perder smartphone). O código aplicava o zeramento de smartphone para todas as lojas do branch (`comissaoCalculator.ts`), porque `isLojaNatalLike` agrupa Natal **e** Caruaru.
+2. **Assistência Técnica era ignorada em Monteiro.** O código pulava AT com `if (!isMonteiro)`, mas o documento lista Monteiro com "ASSISTÊNCIA TÉCNICA: 10%" e o print de config de Monteiro traz o campo preenchido.
+
+**Decisão (confirmada com Ricalfiff):** "seguir estritamente a regra de cada loja, não é regra global" e "seguir o PDF".
+1. Zeramento de smartphone por película passou a ser condicionado a `loja === 'campina-grande' || loja === 'natal'`. Caruaru continua zerando só a película (via `taxaPelicula = 0`), preservando a comissão de smartphone.
+2. Removido o `if (!isMonteiro)` — Monteiro comissiona AT como as demais. Adicionado `assistencia_tecnica_comissao: 10.0` ao `DEFAULT_CONFIG_MONTEIRO` para evitar `NaN` quando o banco não tiver o campo (o valor da tabela `configuracoes` sempre prevalece).
+
+**Por quê:** o documento trata as lojas como configurações distintas; assumir comportamento global onde a spec diferencia é inventar regra. A omissão da frase "perde smartphone" em Caruaru é deliberada (CG e Natal a têm, lado a lado). Para Monteiro, o cliente confirmou que a AT vale — a exclusão no código era resíduo.
+
+**Consequências:** vendedores de Caruaru com película abaixo da mínima mantêm a comissão de smartphone; Monteiro passa a pagar AT. Recálculos de meses fechados nessas duas lojas podem mudar. Valores de config seguem intocados.
+
+**Como explicar em entrevista (30s):** "Auditando o motor por loja, achei duas regras tratadas como globais que a spec diferencia: a penalidade de película que tira o smartphone existe em Campina e Natal mas não em Caruaru, e o código zerava as três porque agrupava Natal e Caruaru no mesmo helper. Separei a regra por loja. E reativei a Assistência Técnica em Monteiro, que estava excluída por um if antigo contra a spec atual do cliente."
+
+**Fonte:** sessão 2026-06-22 com Ricalfiff; auditoria de lógica completa contra "Regras de comissões lojas.pdf" (decisões confirmadas em conversa).
+
+---
+
+## 2026-06-24 — [faturamento] Definição oficial do "Faturamento" do dashboard Tenfront (resposta do cliente)
+
+**Problema:** desde 2026-06-17 ficou em aberto o que exatamente compõe o "Faturamento" do dashboard do Tenfront (provamos que não há endpoint consolidado e que o ERP se contradiz entre telas). O cliente respondeu formalmente as 5 perguntas.
+
+**Definição confirmada pelo cliente:**
+1. **Faturamento = "Total faturando em vendas" (resultado por atendimento) + faturamento de troca inteligente + faturamento de ordem de serviço.** Três componentes.
+2. **Total bruto negativo** (compra de seminovo de fornecedor, ex. ATE-EE7SBAA / iPhone 17 Pro Max / "Leunivan" / −8.300): NÃO entra no faturamento; é **abatido do lucro** no dashboard. "Faturamento é composto apenas por entradas."
+3. **GAR** (garantia, ex. GAR-P5NVFK7): NÃO fatura de novo — quando a garantia é acionada ela **substitui** o faturamento; só aumenta se o cliente **pagar a mais** na garantia.
+4. **Faturamento ≠ "Total preço venda produto"**: o resultado por produto usa só preço de venda, **desconsidera as taxas**; o faturamento **inclui as taxas** (juros de parcelamento).
+5. **Não há endpoint** que devolva o faturamento consolidado; dá para compor com os endpoints de **vendas realizadas + ordem de serviço**.
+
+**Conferência contra o código (sync-tenfront/map-venda.ts):** as respostas **validam 4 dos 5 pontos** do nosso pipeline:
+- Negativos excluídos (`if totalBruto < 0 return null`) ✓ = ponto 2.
+- Cancelados excluídos ✓.
+- Troca inteligente incluída (itens em `Troca` com `Valor de venda`) ✓ = parte do ponto 1.
+- `valor_bruto = líquido + juros` ✓ = ponto 4 (faturamento inclui taxas; o ② líquido é a base de comissão sem taxas).
+- **GAR já correto por construção** (ponto 3): o único GAR de junho (GAR-JR3ADO9, Caruaru, R$ 2.049,99) traz no `detalhes_brutos` apenas uma `Troca` com `"Proposta"` e **sem** `"Valor de venda"` → `valorTroca = 0` → atendimento descartado em `valorTotal <= 0`. Pagamento a mais na garantia entraria como item/pagamento positivo e seria capturado.
+
+**Gap real (ponto 1, componente OS):** **Ordem de Serviço não chega no `listar-atendimentos`** — 0 registros OS em 312 atendimentos de junho (5 lojas), todos `ATE-` exceto 1 `GAR-`. Logo o nosso "bruto" cobre **vendas + troca**, mas **não inclui OS**. Por isso ele não bate (fica abaixo) com o "Faturamento" do dashboard. O probe de endpoints de 2026-06-17 testou faturamento/venda/sales/revenue/billing (todos 404) mas **não testou um endpoint de ordem de serviço** — caminho não explorado.
+
+**Decisão:** documentar a definição e a limitação (comentário em `map-venda.ts` + este ADR). **Não** alterar o cálculo agora: incluir OS exige descobrir/validar um endpoint Tenfront de ordem de serviço (precisa de credencial para sondar) e medir a materialidade. Mantém-se o líquido (② / base de comissão) como verdade auditável do app; o "bruto" é vendas+troca+juros, explicitamente sem OS.
+
+**Consequências / pendências:** (1) sondar endpoint de OS (`ordem-servico`, `listar-ordem-servico`, etc.) com credencial real; (2) se existir e for material, criar ingestão de OS e somar ao faturamento (sem afetar comissão — OS é faturamento, não necessariamente base de comissão); (3) decidir com o cliente se o app deve reproduzir o dashboard (vendas+troca+OS) ou manter o líquido auditável como referência.
+
+**Como explicar em entrevista (30s):** "O cliente fechou a definição do faturamento do ERP: vendas + troca + ordem de serviço, só entradas, com taxas, e garantia não soma. Conferi contra nosso pipeline e 4 dos 5 pontos já batiam — inclusive a garantia, que é descartada naturalmente porque a troca de garantia não tem valor de venda. O único componente que falta é ordem de serviço, que provei não vir no endpoint de atendimentos. Documentei a limitação em vez de inventar o número."
+
+**Fonte:** sessão 2026-06-24 com Ricalfiff; respostas formais do cliente (5 perguntas) + inspeção dos backups reais de junho (`scripts/reproc-backup-*.json`).
+
+**Atualização (mesma sessão) — endpoint de OS encontrado, materialidade ZERO:** sondagem focada contra a API real (Campina, saldo 310) testou 15 nomes de rota e achou **`POST /ordem-de-servico`** (200, envelope `Total pages/Page/Response` igual ao listar-atendimentos). Os 14 demais (incl. `listar-vendas-realizadas`) → 404. Resultado por loja em junho: **Natal 3 OS, demais 0**. Estrutura: `ID OS`, `Tipo OS` (Interna/Externa), `Status` (Esteira/Concluída), `Serviços realizados[].Valor`, `Custos`. As 3 OS de Natal têm **Valor 0** (reparos internos/esteira sem cobrança) → **faturamento de OS = R$ 0,00**. Conclusão: o nosso "bruto" (vendas + troca + juros) **já cobre o faturamento real** dessas lojas no período; o gap histórico era só os juros (já tratados). **Nenhuma mudança de cálculo** — incluir OS adicionaria R$0 hoje (YAGNI). Caminho documentado em código para o futuro: ingerir `/ordem-de-servico` (status finalizado, `Serviços realizados[].Valor`) e somar ao faturamento — não entra na base de comissão.

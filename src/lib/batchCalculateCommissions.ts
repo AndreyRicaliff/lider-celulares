@@ -309,7 +309,8 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string): 
       const batiuMetaPrata = valorParaMetaPrata >= metaPrata;
       const batiuMetaOuro = valorSmartphones >= metaOuro;
 
-      if (lojaId === 'campina-grande' && batiuMetaPrata) {
+      // VR ganha bônus de meta prata em todas as lojas Campina/Natal/Caruaru (não só CG)
+      if (batiuMetaPrata) {
         comissoes.forEach((c: any) => {
           if (c.cargo === 'VR') {
             c.bonus_automatico += 300;

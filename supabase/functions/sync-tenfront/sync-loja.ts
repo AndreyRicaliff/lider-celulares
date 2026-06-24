@@ -205,6 +205,7 @@ export const syncLoja = async (
     } else {
       existing.valor_total += row.valor_total;
       existing.valor_bruto += row.valor_bruto;
+      existing.custo += row.custo;
       existing.juros += row.juros;
       existing.desconto += row.desconto;
       for (const [k, v] of Object.entries(row.detalhes)) {
@@ -277,6 +278,7 @@ export const syncLoja = async (
         colaborador_id: resolveColaboradorId(row.vendedor_nome),
         valor_total: row.valor_total,
         valor_bruto: row.valor_bruto,
+        custo: row.custo,
         juros: row.juros,
         desconto: row.desconto,
         smartphones,
@@ -306,19 +308,31 @@ export const syncLoja = async (
     };
   }
 
-  // Upsert vendas_diarias: safe against mid-sync crashes (no DELETE before INSERT)
+  // Recompute completo do mês: upsert do payload + remoção de ÓRFÃOS (chaves que existiam
+  // no banco mas sumiram do recompute — ex.: venda cancelada que era a única do dia/vendedor).
+  // Sem isso, cada cancelamento deixa linha velha inflando o agregado (causa do drift).
+  // Upsert primeiro (não há janela sem dado válido), depois apaga só o que sobrou.
   if (diariasPayload.length > 0) {
     const { error } = await internalClient
       .from('vendas_diarias')
       .upsert(diariasPayload, { onConflict: 'loja_id,mes,data,vendedor_nome' });
     if (error) throw error;
   }
+  const novasChavesDiarias = new Set(diariasPayload.map((r) => `${r.data}|${r.vendedor_nome}`));
+  const { data: diariasExistentes } = await internalClient
+    .from('vendas_diarias').select('data, vendedor_nome').eq('loja_id', loja.id).eq('mes', mes);
+  for (const r of diariasExistentes ?? []) {
+    if (!novasChavesDiarias.has(`${r.data}|${r.vendedor_nome}`)) {
+      await internalClient.from('vendas_diarias').delete()
+        .eq('loja_id', loja.id).eq('mes', mes).eq('data', r.data).eq('vendedor_nome', r.vendedor_nome);
+    }
+  }
 
   // Recalcular vendas mensais a partir de TODAS as diárias do mês no banco
   // (não apenas do batch atual — garante que o total mensal sempre reflita o mês completo)
   const { data: todasDiarias, error: diariasErr } = await internalClient
     .from('vendas_diarias')
-    .select('vendedor_nome, colaborador_id, valor_total, geral, juros, desconto, detalhes')
+    .select('vendedor_nome, colaborador_id, valor_total, valor_bruto, custo, geral, juros, desconto, detalhes')
     .eq('loja_id', loja.id)
     .eq('mes', mes);
   if (diariasErr) throw diariasErr;
@@ -330,6 +344,8 @@ export const syncLoja = async (
     colaborador_id: string | null;
     detalhes: Record<string, number>;
     valor_total: number;
+    valor_bruto: number;
+    custo: number;
     geral: number;
     juros: number;
     desconto: number;
@@ -342,11 +358,15 @@ export const syncLoja = async (
       colaborador_id: row.colaborador_id,
       detalhes: {},
       valor_total: 0,
+      valor_bruto: 0,
+      custo: 0,
       geral: 0,
       juros: 0,
       desconto: 0,
     };
     existing.valor_total += Number(row.valor_total) || 0;
+    existing.valor_bruto += Number(row.valor_bruto) || 0;
+    existing.custo += Number(row.custo) || 0;
     existing.geral += Number(row.geral) || 0;
     existing.juros += Number(row.juros) || 0;
     existing.desconto += Number(row.desconto) || 0;
@@ -357,12 +377,21 @@ export const syncLoja = async (
   }
   const vendasPayload = Array.from(vendedorTotais.values());
 
-  // Upsert vendas mensais: safe replace without destructive delete
+  // Upsert vendas mensais + remoção de órfãos (vendedor que não tem mais diárias no mês).
   if (vendasPayload.length > 0) {
     const { error } = await internalClient
       .from('vendas')
       .upsert(vendasPayload, { onConflict: 'loja_id,mes,vendedor_nome' });
     if (error) throw error;
+  }
+  const novosVendedores = new Set(vendasPayload.map((v) => v.vendedor_nome));
+  const { data: vendasExistentes } = await internalClient
+    .from('vendas').select('vendedor_nome').eq('loja_id', loja.id).eq('mes', mes);
+  for (const v of vendasExistentes ?? []) {
+    if (!novosVendedores.has(v.vendedor_nome)) {
+      await internalClient.from('vendas').delete()
+        .eq('loja_id', loja.id).eq('mes', mes).eq('vendedor_nome', v.vendedor_nome);
+    }
   }
 
   const semColaborador = vendasPayload.filter((v) => !v.colaborador_id).map((v) => v.vendedor_nome);

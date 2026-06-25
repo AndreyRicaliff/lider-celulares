@@ -45,10 +45,11 @@ interface DashboardProps {
 }
 
 export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardProps = {}) => {
-  const { selectedLoja, selectedMes, setSelectedMes, setSelectedLoja } = useAppStore();
+  const { selectedLoja, selectedMes, setSelectedMes, setSelectedLoja, periodoInicio, periodoFim } = useAppStore();
   const { isGerente, isAdmin } = useAuth();
-  const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
-  const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
+  // Período agora mora no store (filtro no Header). Mantém os nomes locais para o resto do componente.
+  const dataInicio = periodoInicio ?? undefined;
+  const dataFim = periodoFim ?? undefined;
   // Se é colaborador, usa a loja dele; caso contrário usa a selecionada
   const effectiveLoja = colaboradorLojaId || selectedLoja;
   
@@ -306,14 +307,6 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
     ? totaisPorCategoria.smartphones + totaisPorCategoria.acessorios + totaisPorCategoria.cases + totaisPorCategoria.pelicula + totaisPorCategoria.assistenciaTecnica
     : totaisPorCategoria.smartphones;
 
-  // Mês deriva do "Início" do período (não há mais seletor de mês escrito; default = mês atual)
-  useEffect(() => {
-    if (dataInicio) {
-      const m = format(dataInicio, 'yyyy-MM');
-      if (m !== selectedMes) setSelectedMes(m);
-    }
-  }, [dataInicio]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Gastos derivados do que já existe (folha + comissões + CMV = operação; adiantamentos = fora operação).
   // Despesas fixas/avulsas e compra de seminovo exigem fonte nova (pendentes).
   const gastos = useMemo(() => {
@@ -340,7 +333,6 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
     return '';
   }, [dataInicio, dataFim]);
 
-  const limparFiltros = () => { setDataInicio(undefined); setDataFim(undefined); };
 
   const handleManualSync = async () => {
     setIsSyncing(true);
@@ -367,49 +359,9 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
       {/* Indicador de consumo da API Tenfront — apenas admin/supervisão */}
       {isAdmin && <SyncStatusBar />}
 
-      {/* Toolbar de filtros — compacto, numa linha só no topo */}
-      <Card className="!animate-none">
-        <CardContent className="p-2.5 sm:p-3">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {colaboradorLojaId && (
-              <span className="text-sm text-muted-foreground">Loja: <strong className="text-foreground">{LOJAS[colaboradorLojaId as keyof typeof LOJAS]}</strong></span>
-            )}
-            <span className="text-xs text-muted-foreground hidden sm:inline">Período:</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-9 w-[130px] justify-start text-left font-normal", !dataInicio && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                  {dataInicio ? format(dataInicio, 'dd/MM/yyyy') : 'Início'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataInicio} onSelect={setDataInicio}
-                  disabled={(date) => (dataFim ? date > dataFim : false)}
-                  defaultMonth={dataInicio || mesBounds.start} initialFocus className={cn("p-3 pointer-events-auto")} />
-              </PopoverContent>
-            </Popover>
-            <span className="text-xs text-muted-foreground">até</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-9 w-[130px] justify-start text-left font-normal", !dataFim && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                  {dataFim ? format(dataFim, 'dd/MM/yyyy') : 'Fim'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataFim} onSelect={setDataFim}
-                  disabled={(date) => (dataInicio ? date < dataInicio : false)}
-                  defaultMonth={dataFim || dataInicio || mesBounds.start} initialFocus className={cn("p-3 pointer-events-auto")} />
-              </PopoverContent>
-            </Popover>
-            {temFiltroAtivo ? (
-              <Button variant="ghost" size="sm" onClick={limparFiltros} className="h-9 text-xs">Limpar</Button>
-            ) : (
-              <span className="ml-auto text-xs text-muted-foreground/70 hidden sm:inline">Mês inteiro</span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {colaboradorLojaId && (
+        <p className="text-sm text-muted-foreground">Loja: <strong className="text-foreground">{LOJAS[colaboradorLojaId as keyof typeof LOJAS]}</strong></p>
+      )}
 
       {variant === 'resumo' ? (
         <>

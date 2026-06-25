@@ -8,11 +8,15 @@ interface AppState {
   selectedVendedor: string | null;
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
+  periodoInicio: Date | null;
+  periodoFim: Date | null;
 
   setCurrentView: (view: AppState['currentView']) => void;
   setSelectedLoja: (loja: string | null) => void;
   setSelectedMes: (mes: string) => void;
   setSelectedVendedor: (vendedor: string | null) => void;
+  setPeriodoInicio: (d: Date | null) => void;
+  setPeriodoFim: (d: Date | null) => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
   toggleSidebarCollapsed: () => void;
@@ -30,11 +34,15 @@ export const useAppStore = create<AppState>()(
       selectedVendedor: null,
       sidebarOpen: false,
       sidebarCollapsed: false,
+      periodoInicio: null,
+      periodoFim: null,
 
       setCurrentView: (view) => set({ currentView: view }),
       setSelectedLoja: (loja) => set({ selectedLoja: loja }),
       setSelectedMes: (mes) => set({ selectedMes: mes }),
       setSelectedVendedor: (vendedor) => set({ selectedVendedor: vendedor }),
+      setPeriodoInicio: (d) => set({ periodoInicio: d }),
+      setPeriodoFim: (d) => set({ periodoFim: d }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       toggleSidebarCollapsed: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),

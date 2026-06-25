@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCw } from 'lucide-react';
 import { SyncNotifications } from './SyncNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { PeriodoFiltro } from './PeriodoFiltro';
 
 interface HeaderProps {
   onSignOut?: () => void;
@@ -49,6 +50,7 @@ export const Header = ({ onSignOut, mostrarSeletorLoja }: HeaderProps) => {
       <div className="flex items-center justify-between">
         <h1 className="text-sm sm:text-2xl font-light tracking-wide truncate ml-12 lg:ml-0">{getTitle()}</h1>
         <div className="flex items-center gap-2 sm:gap-3">
+          {(currentView === 'dashboard' || currentView === 'vendas') && <PeriodoFiltro />}
           {mostrarSeletorLoja && (
             <Select value={selectedLoja || 'all'} onValueChange={(v) => setSelectedLoja(v === 'all' ? null : v)}>
               <SelectTrigger className="h-8 sm:h-9 w-[8.5rem] sm:w-[11rem] bg-card/50 text-xs sm:text-sm" title="Filtrar por loja">

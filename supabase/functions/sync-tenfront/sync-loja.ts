@@ -365,6 +365,36 @@ export const syncLoja = async (
     if (error) throw error;
   }
 
+  // Faturamento "espelho Tenfront" (loja/mês) — isolado da comissão.
+  // Reaproveita o audit já buscado (auditRows2). Componentes: líquido (base de comissão),
+  // juros (acréscimo de parcelamento), faturamento_extra (GAR/troca revendida: Total bruto>0
+  // sem item de Venda) e total_bruto (campo cru). O espelho é montado no app por loja.
+  let fatLiquido = 0, fatJuros = 0, fatExtra = 0, fatTotalBruto = 0, fatAtend = 0;
+  for (const r of auditRows2) {
+    const st = (r.status || '').toLowerCase();
+    if (st.includes('cancel') || st.includes('exclu')) continue;
+    for (const p of r.pagamento ?? []) {
+      const j = safeParseNumber(p['Valor com acréscimo'] || p['Valor informado']) - safeParseNumber(p['Valor informado']);
+      if (j > 0) fatJuros += j;
+    }
+    const tb = safeParseNumber(r.valor_total);
+    if (tb < 0) continue; // compra de seminovo: abatida do lucro, fora do faturamento
+    fatAtend++;
+    fatTotalBruto += tb;
+    let liq = 0;
+    for (const info of r.detalhes_brutos ?? []) {
+      for (const v of [...(info.Venda ?? []), ...(info.Brinde ?? [])]) liq += safeParseNumber(v['Valor de venda'] || v.Valor || 0);
+      for (const t of info.Troca ?? []) liq += safeParseNumber(t['Valor de venda'] || t.Valor || 0);
+    }
+    fatLiquido += liq;
+    if (liq === 0 && tb > 0) fatExtra += tb; // GAR com pagamento / troca revendida sem item de Venda
+  }
+  await internalClient.from('faturamento_loja').upsert({
+    loja_id: loja.id, mes,
+    liquido: fatLiquido, juros: fatJuros, faturamento_extra: fatExtra,
+    total_bruto: fatTotalBruto, atendimentos: fatAtend, updated_at: new Date().toISOString(),
+  }, { onConflict: 'loja_id,mes' });
+
   const semColaborador = vendasPayload.filter((v) => !v.colaborador_id).map((v) => v.vendedor_nome);
 
   await internalClient.from('sync_logs').insert({

@@ -410,3 +410,23 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Resultado:** Natal Bruto 269.658 ≈ Tenfront 267.253. NOTA: o "Faturamento" do **Dashboard** do Tenfront (102.518 campina) diverge do **Relatório Financeiro** do próprio Tenfront (~95K campina) e não é reproduzível com a API de atendimentos — o ERP é inconsistente entre telas. A referência auditável do nosso app é o LÍQUIDO (soma dos itens vendidos concluídos = base de comissão); juros/desconto são decomposições rastreáveis até o atendimento.
 
 **Fonte:** sessão 2026-06-17 com Ricalfiff (prints natal 267K/283K e campina dashboard 102K).
+
+---
+
+## 2026-06-25 — [faturamento] Faturamento "espelho Tenfront" calibrado por loja (backend)
+
+**Problema:** o cliente quer ver no app o mesmo "Faturamento" do dashboard do Tenfront. Validação contra 3 lojas (números reais do dashboard) provou que **nenhuma fórmula única reproduz** o número: o campo "Total bruto" do Tenfront **inclui juros em Natal, exclui em Campina/Caruaru** (inconsistência interna do ERP). Regras oficiais do cliente: Faturamento = vendas (com taxas) + troca inteligente (só quando revendida) + ordem de serviço (=0 hoje); negativos (compra de seminovo) abatidos do lucro; GAR só fatura se o cliente paga a mais.
+
+**Decisão:** calibração por loja + isolar do cálculo de comissão.
+- Nova tabela `faturamento_loja` (loja/mês): `liquido`, `juros`, `faturamento_extra` (GAR/troca revendida = Total bruto>0 sem item de Venda), `total_bruto` (campo cru), `atendimentos`. Alimentada pelo sync a partir do `atendimentos_audit` (sem chamada extra à API).
+- Calibração no `configuracoes.config` (JSON, sem migration): `bruto_inclui_juros` (0/1) + `faturamento_tenfront_ref` (drift-guard).
+- Espelho (no app) = `total_bruto + (bruto_inclui_juros ? 0 : juros)`. Validado: Natal −0,34%, Campina +0,48%, Caruaru +0,85%.
+- `faturamentoCalculator.ts`: monta o espelho, o `ajusteErp` (resíduo explícito = espelho − líquido − juros − extra) e a divergência vs `tenfrontRef`; alerta se >2% (calibração desatualizada).
+
+**Por quê:** perseguir match exato com fórmula única é mirar num alvo que o ERP calcula inconsistentemente — vira manutenção eterna e quebra calado. A calibração por loja + drift-guard transforma quebra silenciosa em alerta visível; mora no banco (admin edita sem deploy). O líquido permanece intocado como base de comissão; o faturamento_extra (GAR/troca) **nunca** entra em comissão (atendimentos sem item de Venda já não comissionavam).
+
+**Consequências:** captura o GAR-P5NVFK7 (8.800, Campina) e equivalentes que o pipeline dropava. Resíduo ~0,5–1% por loja (inconsistência de juros do ERP) fica explícito na linha "Ajuste ERP" do drill-down. Soledade/Monteiro sem número de referência ainda — calibração default `bruto_inclui_juros=false`, a confirmar quando o BPO passar o dashboard. PENDENTE: aplicar migration em prod (via `db query --linked`, drift de migrations), deploy da edge `sync-tenfront`, e UI (cards peso igual + pop-up drill-down + painel cross-loja).
+
+**Como explicar em entrevista (30s):** "O cliente queria reproduzir o faturamento do ERP. Validei contra 3 lojas e provei que não existe fórmula única — o ERP inclui juros no 'Total bruto' de uma loja e não de outra. Em vez de chutar, fiz calibração por loja guardada no banco, com um guard de divergência que alerta se o ERP mudar, e isolei tudo do cálculo de comissão. O número auditável (líquido) continua sendo a base de comissão; o espelho é secundário e honesto sobre o resíduo."
+
+**Fonte:** sessão 2026-06-25 com Ricalfiff (validação com dashboards de Natal/Campina/Caruaru + regras oficiais do cliente).

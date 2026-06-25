@@ -16,7 +16,8 @@ create table if not exists public.faturamento_loja (
 
 alter table public.faturamento_loja enable row level security;
 
--- Leitura por escopo: admin/supervisão veem tudo; colaborador/gerente só a(s) própria(s) loja(s).
+-- Leitura por escopo (info gerencial): admin/supervisão veem tudo; gerente só a(s) própria(s)
+-- loja(s); vendedor comum NÃO vê faturamento de loja. Espelha a policy de `vendas`.
 -- Escrita: somente service_role (edge function de sync) — bypassa RLS, sem policy de escrita.
 drop policy if exists "faturamento_loja_select_scope" on public.faturamento_loja;
 create policy "faturamento_loja_select_scope" on public.faturamento_loja
@@ -24,5 +25,5 @@ create policy "faturamento_loja_select_scope" on public.faturamento_loja
   using (
     has_role(auth.uid(), 'admin'::app_role)
     or has_role(auth.uid(), 'supervisao'::app_role)
-    or loja_id = any (current_user_lojas())
+    or (is_gerente() and loja_id in (select current_user_lojas()))
   );

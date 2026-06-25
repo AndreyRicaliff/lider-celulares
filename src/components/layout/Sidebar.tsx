@@ -16,8 +16,10 @@ import {
   Hash,
   ArrowLeftRight,
   Package,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
-import logoLider from '@/assets/logo.jpg';
+import { LiderLogo } from './LiderLogo';
 
 interface SidebarProps {
   isColaborador?: boolean;
@@ -30,7 +32,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLojaId, lojasDisponiveis, onSwitchLoja, onSignOut }: SidebarProps) => {
-  const { currentView, setCurrentView, setSelectedLoja, sidebarOpen, setSidebarOpen } = useAppStore();
+  const { currentView, setCurrentView, setSelectedLoja, sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } = useAppStore();
 
   const handleNavigation = (view: typeof currentView, loja?: string) => {
     setCurrentView(view);
@@ -62,15 +64,25 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
       <aside
         className={cn(
           'fixed top-0 left-0 z-40 h-full w-64 bg-sidebar border-r border-sidebar-border',
-          'flex flex-col transition-transform duration-300 ease-in-out',
+          'flex flex-col transition-all duration-300 ease-in-out',
           'lg:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          sidebarCollapsed && 'lg:w-16'
         )}
       >
-        {/* Logo */}
-        <div className="p-4 border-b border-sidebar-border">
-          <img src={logoLider} alt="Líder Celulares" className="h-12 w-auto mx-auto rounded" />
-          <p className="text-xs text-sidebar-foreground text-center mt-2">Sistema de Comissões</p>
+        {/* Logo + recolher */}
+        <div className={cn('border-b border-sidebar-border p-4', sidebarCollapsed && 'lg:px-2')}>
+          <div className={cn('flex items-center gap-2', sidebarCollapsed ? 'justify-between lg:flex-col lg:gap-3' : 'justify-between')}>
+            <LiderLogo collapsed={sidebarCollapsed} />
+            <button
+              onClick={toggleSidebarCollapsed}
+              className="hidden lg:flex items-center justify-center h-7 w-7 rounded-md text-sidebar-foreground hover:bg-sidebar-accent shrink-0"
+              title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+              aria-label={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -140,10 +152,14 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
           <div className="p-3 border-t border-sidebar-border">
             <button
               onClick={onSignOut}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-destructive hover:bg-destructive/10"
+              title={sidebarCollapsed ? 'Sair' : undefined}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-destructive hover:bg-destructive/10',
+                sidebarCollapsed && 'lg:justify-center lg:gap-0 lg:px-0'
+              )}
             >
               <LogOut size={18} />
-              <span>Sair</span>
+              <span className={cn(sidebarCollapsed && 'lg:hidden')}>Sair</span>
             </button>
           </div>
         )}
@@ -152,11 +168,15 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
   );
 };
 
-const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="mt-4 mb-2">
-    <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">{children}</span>
-  </div>
-);
+const SectionLabel = ({ children }: { children: React.ReactNode }) => {
+  const collapsed = useAppStore((s) => s.sidebarCollapsed);
+  return (
+    <div className="mt-4 mb-2">
+      <span className={cn('text-xs text-sidebar-foreground uppercase tracking-wider px-3', collapsed && 'lg:hidden')}>{children}</span>
+      {collapsed && <div className="hidden lg:block mx-2 mt-1 border-t border-sidebar-border/60" />}
+    </div>
+  );
+};
 
 interface TrocarLojaProps {
   lojasDisponiveis?: ColaboradorLoja[];
@@ -166,24 +186,27 @@ interface TrocarLojaProps {
 }
 
 const TrocarLoja = ({ lojasDisponiveis, colaboradorLojaId, onSwitchLoja, setSidebarOpen }: TrocarLojaProps) => {
+  const collapsed = useAppStore((s) => s.sidebarCollapsed);
   if (!lojasDisponiveis || lojasDisponiveis.length <= 1) return null;
   return (
     <div className="mt-4 mb-2">
-      <span className="text-xs text-sidebar-foreground uppercase tracking-wider px-3">Trocar Loja</span>
+      <span className={cn('text-xs text-sidebar-foreground uppercase tracking-wider px-3', collapsed && 'lg:hidden')}>Trocar Loja</span>
       <div className="mt-1 space-y-0.5 px-1">
         {lojasDisponiveis.map((loja) => (
           <button
             key={loja.lojaId}
             onClick={() => { onSwitchLoja?.(loja.lojaId); setSidebarOpen(false); }}
+            title={collapsed ? (LOJAS[loja.lojaId as keyof typeof LOJAS] || loja.lojaId) : undefined}
             className={cn(
               'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200',
+              collapsed && 'lg:justify-center lg:gap-0 lg:px-0',
               loja.lojaId === colaboradorLojaId
                 ? 'gradient-primary text-primary-foreground shadow-glow'
                 : 'text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-1'
             )}
           >
             <ArrowLeftRight size={16} />
-            <span>{LOJAS[loja.lojaId as keyof typeof LOJAS] || loja.lojaId}</span>
+            <span className={cn(collapsed && 'lg:hidden')}>{LOJAS[loja.lojaId as keyof typeof LOJAS] || loja.lojaId}</span>
           </button>
         ))}
       </div>
@@ -198,16 +221,20 @@ interface NavItemProps {
   onClick: () => void;
 }
 
-const NavItem = ({ icon, label, active, onClick }: NavItemProps) => (
-  <button
-    onClick={onClick}
-    className={cn(
-      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
-      'hover:bg-sidebar-accent hover:translate-x-1',
-      active ? 'gradient-primary text-primary-foreground shadow-glow' : 'text-sidebar-foreground hover:text-sidebar-accent-foreground'
-    )}
-  >
-    {icon}
-    <span>{label}</span>
-  </button>
-);
+const NavItem = ({ icon, label, active, onClick }: NavItemProps) => {
+  const collapsed = useAppStore((s) => s.sidebarCollapsed);
+  return (
+    <button
+      onClick={onClick}
+      title={collapsed && typeof label === 'string' ? label : undefined}
+      className={cn(
+        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-sidebar-accent',
+        collapsed ? 'lg:justify-center lg:gap-0 lg:px-0' : 'hover:translate-x-1',
+        active ? 'gradient-primary text-primary-foreground shadow-glow' : 'text-sidebar-foreground hover:text-sidebar-accent-foreground'
+      )}
+    >
+      {icon}
+      <span className={cn('truncate', collapsed && 'lg:hidden')}>{label}</span>
+    </button>
+  );
+};

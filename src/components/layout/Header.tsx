@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store/appStore';
+import { cn } from '@/lib/utils';
 import { LOJAS, LOJAS_IDS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
@@ -11,7 +12,7 @@ interface HeaderProps {
 }
 
 export const Header = ({ onSignOut, mostrarSeletorLoja }: HeaderProps) => {
-  const { currentView, selectedLoja, selectedVendedor, setSelectedLoja } = useAppStore();
+  const { currentView, selectedLoja, selectedVendedor, setSelectedLoja, sidebarCollapsed } = useAppStore();
 
   const getTitle = () => {
     switch (currentView) {
@@ -43,7 +44,7 @@ export const Header = ({ onSignOut, mostrarSeletorLoja }: HeaderProps) => {
   };
 
   return (
-    <header className="gradient-card border-b-2 border-primary px-3 sm:px-6 py-3 sm:py-4 shadow-card fixed top-0 right-0 left-0 lg:left-64 z-20">
+    <header className={cn('gradient-card border-b-2 border-primary px-3 sm:px-6 py-3 sm:py-4 shadow-card fixed top-0 right-0 left-0 z-20 transition-all duration-300', sidebarCollapsed ? 'lg:left-16' : 'lg:left-64')}>
       <div className="flex items-center justify-between">
         <h1 className="text-sm sm:text-2xl font-light tracking-wide truncate ml-12 lg:ml-0">{getTitle()}</h1>
         <div className="flex items-center gap-2 sm:gap-3">

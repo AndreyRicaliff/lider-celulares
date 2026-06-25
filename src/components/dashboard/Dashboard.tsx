@@ -344,50 +344,25 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       {/* Indicador de consumo da API Tenfront — apenas admin/supervisão */}
       {isAdmin && <SyncStatusBar />}
 
-      {/* Filters - apenas para admin */}
-      {!colaboradorLojaId && (
-        <Card className="!animate-none">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
-              {/* Seletor de loja movido para o header global (visível em todas as telas) */}
-              <Input
-                type="month"
-                value={selectedMes}
-                onChange={(e) => setSelectedMes(e.target.value)}
-                className="w-full sm:max-w-[200px]"
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      
-      {/* Filtro de mês para colaborador */}
-      {colaboradorLojaId && (
-        <Card className="!animate-none">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
-              <span className="text-sm text-muted-foreground">Loja: <strong className="text-foreground">{LOJAS[colaboradorLojaId as keyof typeof LOJAS]}</strong></span>
-              <Input
-                type="month"
-                value={selectedMes}
-                onChange={(e) => setSelectedMes(e.target.value)}
-                className="w-full sm:max-w-[200px]"
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Filtro de Período */}
+      {/* Toolbar de filtros — compacto, numa linha só no topo */}
       <Card className="!animate-none">
-        <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">Período:</span>
+        <CardContent className="p-2.5 sm:p-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {colaboradorLojaId && (
+              <span className="text-sm text-muted-foreground">Loja: <strong className="text-foreground">{LOJAS[colaboradorLojaId as keyof typeof LOJAS]}</strong></span>
+            )}
+            <Input
+              type="month"
+              value={selectedMes}
+              onChange={(e) => setSelectedMes(e.target.value)}
+              className="h-9 w-[150px] tabular-nums"
+            />
+            <span className="hidden sm:block h-5 w-px bg-border" />
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal text-sm border-border/60 bg-card/50", !dataInicio && "text-muted-foreground")}>
+                <Button variant="outline" size="sm" className={cn("h-9 w-[130px] justify-start text-left font-normal", !dataInicio && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                  {dataInicio ? format(dataInicio, 'dd/MM/yyyy') : 'Data início'}
+                  {dataInicio ? format(dataInicio, 'dd/MM/yyyy') : 'Início'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -401,12 +376,12 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
                   defaultMonth={mesBounds.start} initialFocus className={cn("p-3 pointer-events-auto")} />
               </PopoverContent>
             </Popover>
-            <span className="text-sm text-muted-foreground">até</span>
+            <span className="text-xs text-muted-foreground">até</span>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal text-sm border-border/60 bg-card/50", !dataFim && "text-muted-foreground")}>
+                <Button variant="outline" size="sm" className={cn("h-9 w-[130px] justify-start text-left font-normal", !dataFim && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                  {dataFim ? format(dataFim, 'dd/MM/yyyy') : 'Data fim'}
+                  {dataFim ? format(dataFim, 'dd/MM/yyyy') : 'Fim'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -420,11 +395,10 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
                   defaultMonth={mesBounds.start} initialFocus className={cn("p-3 pointer-events-auto")} />
               </PopoverContent>
             </Popover>
-            {temFiltroAtivo && (
-              <>
-                <Button variant="ghost" size="sm" onClick={limparFiltros} className="text-xs">Limpar filtros</Button>
-                <Badge variant="secondary" className="text-xs">{periodoLabel}</Badge>
-              </>
+            {temFiltroAtivo ? (
+              <Button variant="ghost" size="sm" onClick={limparFiltros} className="h-9 text-xs">Limpar</Button>
+            ) : (
+              <span className="ml-auto text-xs text-muted-foreground/70 hidden sm:inline">Mês inteiro</span>
             )}
           </div>
         </CardContent>
@@ -457,28 +431,6 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
         />
       )}
 
-      {/* ⚠️ CRITICAL: Data Filter Warning Banner */}
-      {temFiltroAtivo && (
-        <Card className="border-green-500/30 bg-green-500/5">
-          <CardContent className="py-3 px-4 flex items-start gap-2 text-xs">
-            <span className="text-green-500 font-bold mt-0.5 flex-shrink-0">✓</span>
-            <div className="text-foreground">
-              <strong className="text-green-600">Filtro de período ativo:</strong> Exibindo dados de <strong>{dataInicio ? format(dataInicio, 'dd/MM/yyyy') : 'início'}</strong> até <strong>{dataFim ? format(dataFim, 'dd/MM/yyyy') : 'fim'}</strong>. Todas as métricas mostram APENAS dados dentro desse intervalo.
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {!temFiltroAtivo && selectedMes && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="py-3 px-4 flex items-start gap-2 text-xs">
-            <span className="text-amber-500 font-bold mt-0.5 flex-shrink-0">ℹ</span>
-            <div className="text-foreground">
-              <strong className="text-amber-600">Sem filtro de período:</strong> Exibindo dados <strong>agregados do mês inteiro</strong> ({selectedMes}). Use os filtros de data acima para visualizar um período específico.
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Vendas do Dia por Loja */}
       <DailyStoreSalesCards

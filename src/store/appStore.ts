@@ -7,6 +7,7 @@ interface AppState {
   selectedMes: string;
   selectedVendedor: string | null;
   sidebarOpen: boolean;
+  sidebarCollapsed: boolean;
 
   setCurrentView: (view: AppState['currentView']) => void;
   setSelectedLoja: (loja: string | null) => void;
@@ -14,6 +15,7 @@ interface AppState {
   setSelectedVendedor: (vendedor: string | null) => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
+  toggleSidebarCollapsed: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -27,6 +29,7 @@ export const useAppStore = create<AppState>()(
       })(),
       selectedVendedor: null,
       sidebarOpen: false,
+      sidebarCollapsed: false,
 
       setCurrentView: (view) => set({ currentView: view }),
       setSelectedLoja: (loja) => set({ selectedLoja: loja }),
@@ -34,6 +37,7 @@ export const useAppStore = create<AppState>()(
       setSelectedVendedor: (vendedor) => set({ selectedVendedor: vendedor }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      toggleSidebarCollapsed: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     }),
     {
       name: 'lider-app-store',
@@ -41,6 +45,7 @@ export const useAppStore = create<AppState>()(
       // (Todas, p/ admin/supervisão). A escolha vive só na sessão atual.
       partialize: (state) => ({
         selectedMes: state.selectedMes,
+        sidebarCollapsed: state.sidebarCollapsed,
       }),
     }
   )

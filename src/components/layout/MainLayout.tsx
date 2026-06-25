@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAppStore } from '@/store/appStore';
@@ -26,7 +27,7 @@ interface MainLayoutProps {
 }
 
 export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, colaboradorLojaId, lojasDisponiveis, onSwitchLoja, onSignOut }: MainLayoutProps) => {
-  const { currentView } = useAppStore();
+  const { currentView, sidebarCollapsed } = useAppStore();
 
   const renderContent = () => {
     if (children) return children;
@@ -83,7 +84,7 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
   return (
     <div className="min-h-screen gradient-dark">
       <Sidebar isColaborador={isColaborador} isGerente={isGerente} isSupervisao={isSupervisao} colaboradorLojaId={colaboradorLojaId} lojasDisponiveis={lojasDisponiveis} onSwitchLoja={onSwitchLoja} onSignOut={onSignOut} />
-      <div className="lg:ml-64 flex flex-col min-h-screen">
+      <div className={cn('flex flex-col min-h-screen transition-all duration-300', sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64')}>
         <Header onSignOut={onSignOut} mostrarSeletorLoja={!isColaborador && !isGerente} />
         <main className="flex-1 p-3 sm:p-6 overflow-y-auto pt-20 lg:pt-20">
           {renderContent()}

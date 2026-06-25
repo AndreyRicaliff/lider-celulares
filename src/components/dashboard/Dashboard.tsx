@@ -306,6 +306,14 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
     ? totaisPorCategoria.smartphones + totaisPorCategoria.acessorios + totaisPorCategoria.cases + totaisPorCategoria.pelicula + totaisPorCategoria.assistenciaTecnica
     : totaisPorCategoria.smartphones;
 
+  // Mês deriva do "Início" do período (não há mais seletor de mês escrito; default = mês atual)
+  useEffect(() => {
+    if (dataInicio) {
+      const m = format(dataInicio, 'yyyy-MM');
+      if (m !== selectedMes) setSelectedMes(m);
+    }
+  }, [dataInicio]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const mesBounds = useMemo(() => {
     if (!selectedMes) return { start: undefined, end: undefined };
     const [ano, mesNum] = selectedMes.split('-').map(Number);
@@ -356,13 +364,7 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
             {colaboradorLojaId && (
               <span className="text-sm text-muted-foreground">Loja: <strong className="text-foreground">{LOJAS[colaboradorLojaId as keyof typeof LOJAS]}</strong></span>
             )}
-            <Input
-              type="month"
-              value={selectedMes}
-              onChange={(e) => setSelectedMes(e.target.value)}
-              className="h-9 w-[150px] tabular-nums"
-            />
-            <span className="hidden sm:block h-5 w-px bg-border" />
+            <span className="text-xs text-muted-foreground hidden sm:inline">Período:</span>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className={cn("h-9 w-[130px] justify-start text-left font-normal", !dataInicio && "text-muted-foreground")}>
@@ -372,13 +374,8 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar mode="single" selected={dataInicio} onSelect={setDataInicio}
-                  disabled={(date) => {
-                    if (mesBounds.start && date < mesBounds.start) return true;
-                    if (mesBounds.end && date > mesBounds.end) return true;
-                    if (dataFim && date > dataFim) return true;
-                    return false;
-                  }}
-                  defaultMonth={mesBounds.start} initialFocus className={cn("p-3 pointer-events-auto")} />
+                  disabled={(date) => (dataFim ? date > dataFim : false)}
+                  defaultMonth={dataInicio || mesBounds.start} initialFocus className={cn("p-3 pointer-events-auto")} />
               </PopoverContent>
             </Popover>
             <span className="text-xs text-muted-foreground">até</span>
@@ -391,13 +388,8 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar mode="single" selected={dataFim} onSelect={setDataFim}
-                  disabled={(date) => {
-                    if (mesBounds.start && date < mesBounds.start) return true;
-                    if (mesBounds.end && date > mesBounds.end) return true;
-                    if (dataInicio && date < dataInicio) return true;
-                    return false;
-                  }}
-                  defaultMonth={mesBounds.start} initialFocus className={cn("p-3 pointer-events-auto")} />
+                  disabled={(date) => (dataInicio ? date < dataInicio : false)}
+                  defaultMonth={dataFim || dataInicio || mesBounds.start} initialFocus className={cn("p-3 pointer-events-auto")} />
               </PopoverContent>
             </Popover>
             {temFiltroAtivo ? (

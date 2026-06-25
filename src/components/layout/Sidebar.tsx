@@ -178,8 +178,11 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
 const SectionLabel = ({ children }: { children: React.ReactNode }) => {
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   return (
-    <div className="mt-4 mb-2">
-      <span className={cn('text-xs text-sidebar-foreground uppercase tracking-wider px-3', collapsed && 'lg:hidden')}>{children}</span>
+    <div className="mt-4 mb-1">
+      <span className={cn('flex items-center gap-2 text-[11px] font-extrabold text-primary uppercase tracking-[0.18em] px-3', collapsed && 'lg:hidden')}>
+        <span className="h-3.5 w-1 rounded-full bg-primary" />
+        {children}
+      </span>
       {collapsed && <div className="hidden lg:block mx-2 mt-1 border-t border-sidebar-border/60" />}
     </div>
   );
@@ -200,10 +203,13 @@ const NavGroup = ({ title, children }: { title: string; children: React.ReactNod
     <div className="mt-3">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-sidebar-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 mb-0.5 rounded-md text-[11px] font-extrabold text-primary uppercase tracking-[0.18em] hover:bg-primary/10 transition-colors"
       >
-        <span>{title}</span>
-        <ChevronDown size={14} className={cn('transition-transform', !open && '-rotate-90')} />
+        <span className="flex items-center gap-2">
+          <span className="h-3.5 w-1 rounded-full bg-primary" />
+          {title}
+        </span>
+        <ChevronDown size={14} className={cn('transition-transform text-primary/70', !open && '-rotate-90')} />
       </button>
       {open && <div className="mt-1 space-y-1">{children}</div>}
     </div>

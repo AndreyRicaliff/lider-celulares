@@ -2,6 +2,7 @@ import { useAppStore } from '@/store/appStore';
 import { cn } from '@/lib/utils';
 import { LOJAS, LOJAS_IDS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RefreshCw } from 'lucide-react';
 import { SyncNotifications } from './SyncNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -49,17 +50,17 @@ export const Header = ({ onSignOut, mostrarSeletorLoja }: HeaderProps) => {
         <h1 className="text-sm sm:text-2xl font-light tracking-wide truncate ml-12 lg:ml-0">{getTitle()}</h1>
         <div className="flex items-center gap-2 sm:gap-3">
           {mostrarSeletorLoja && (
-            <select
-              value={selectedLoja || ''}
-              onChange={(e) => setSelectedLoja(e.target.value || null)}
-              className="h-8 sm:h-9 px-2 sm:px-3 rounded-lg border border-border bg-card/50 text-foreground text-xs sm:text-sm focus:ring-2 focus:ring-primary/30 max-w-[9rem] sm:max-w-none"
-              title="Filtrar por loja"
-            >
-              <option value="">Todas as Lojas</option>
-              {LOJAS_IDS.map((id) => (
-                <option key={id} value={id}>{LOJAS[id]}</option>
-              ))}
-            </select>
+            <Select value={selectedLoja || 'all'} onValueChange={(v) => setSelectedLoja(v === 'all' ? null : v)}>
+              <SelectTrigger className="h-8 sm:h-9 w-[8.5rem] sm:w-[11rem] bg-card/50 text-xs sm:text-sm" title="Filtrar por loja">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Lojas</SelectItem>
+                {LOJAS_IDS.map((id) => (
+                  <SelectItem key={id} value={id}>{LOJAS[id]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           <SyncNotifications />
           <ThemeToggle />

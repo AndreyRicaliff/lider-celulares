@@ -59,6 +59,22 @@ export function calcFaturamentoEspelho(
 export const calibracaoDesatualizada = (esp: FaturamentoEspelho): boolean =>
   esp.divergencia !== null && Math.abs(esp.divergencia) > DRIFT_LIMITE;
 
+// Soma espelhos já calibrados por loja (cada loja aplica sua própria regra de juros).
+// A divergência agregada não é significativa (ref é por loja) → null.
+export const somarEspelhos = (itens: FaturamentoEspelho[]): FaturamentoEspelho =>
+  itens.reduce<FaturamentoEspelho>(
+    (a, it) => ({
+      liquido: a.liquido + it.liquido,
+      juros: a.juros + it.juros,
+      extra: a.extra + it.extra,
+      totalBruto: a.totalBruto + it.totalBruto,
+      espelho: a.espelho + it.espelho,
+      ajusteErp: a.ajusteErp + it.ajusteErp,
+      divergencia: null,
+    }),
+    { liquido: 0, juros: 0, extra: 0, totalBruto: 0, espelho: 0, ajusteErp: 0, divergencia: null },
+  );
+
 export const lerCalibracao = (
   config: Record<string, number>,
   lojaId: string,

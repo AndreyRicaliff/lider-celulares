@@ -19,6 +19,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { LoadingOverlay } from '@/components/ui/loading';
 import { formatCurrency } from '@/lib/formatters';
 import { LOJAS, LOJAS_IDS, isIgnoredColumn } from '@/lib/constants';
+import { useFaturamento } from '@/hooks/useFaturamento';
+import { FaturamentoCards } from './FaturamentoCards';
+import { FaturamentoCrossLoja } from './FaturamentoCrossLoja';
 import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
 import { TrendingUp, Users, DollarSign, Award, ShoppingBag, Smartphone, Shield, CalendarIcon, RefreshCw, Percent } from 'lucide-react';
 import { RankingBotons } from '@/components/ranking/RankingBotons';
@@ -50,6 +53,8 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
   const { data: config } = useConfiguracao(effectiveLoja || 'soledade', selectedMes);
   const { data: vendasDiarias = [] } = useVendasDiarias(effectiveLoja || undefined, selectedMes, { forceAllLojas: isGerente || isAdmin });
   const { data: allConfigs } = useAllConfiguracoes(selectedMes);
+  const { data: faturamentos = [] } = useFaturamento(selectedMes);
+  const tituloEscopo = effectiveLoja ? (LOJAS[effectiveLoja as keyof typeof LOJAS] ?? effectiveLoja) : 'Todas as Lojas';
 
   const [isSyncing, setIsSyncing] = useState(false);
   const queryClient = useQueryClient();
@@ -483,34 +488,8 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       />
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-1 gradient-primary" />
-          <CardContent className="p-3 sm:p-6">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Faturamento</p>
-                <div className="space-y-1.5">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Líquido (vendido)</p>
-                    <p className="text-lg sm:text-2xl font-bold text-gradient truncate">{formatCurrency(totalVendas)}</p>
-                  </div>
-                  {juros > 0 && (
-                    <div className="border-t border-border/30 pt-1.5">
-                      <p className="text-[10px] text-muted-foreground/60 truncate">+ Juros parcelam.: {formatCurrency(juros)}</p>
-                      <p className="text-[10px] text-amber-400/80 uppercase tracking-wide pt-0.5">Bruto (c/ juros)</p>
-                      <p className="text-base sm:text-xl font-bold text-amber-400 truncate">{formatCurrency(totalBruto)}</p>
-                    </div>
-                  )}
-                  {totalDesconto > 0 && (
-                    <p className="text-[10px] text-muted-foreground/50 truncate pt-0.5">Descontos concedidos: {formatCurrency(totalDesconto)} (abatido)</p>
-                  )}
-                </div>
-              </div>
-              <div className="p-1.5 sm:p-2 bg-muted rounded-lg flex-shrink-0"><TrendingUp className="text-primary" /></div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <FaturamentoCards faturamentos={faturamentos} configs={allConfigs ?? {}} effectiveLoja={effectiveLoja} titulo={tituloEscopo} />
         <MetricCard
           icon={<DollarSign className="text-success" />}
           label="Total Comissões"
@@ -529,6 +508,10 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
           subtitle={temFiltroAtivo ? 'Disponível apenas no mensal' : (mediaComissao === 0 ? 'Execute o cálculo' : undefined)}
         />
       </div>
+
+      {!effectiveLoja && faturamentos.length > 1 && (
+        <FaturamentoCrossLoja faturamentos={faturamentos} configs={allConfigs ?? {}} />
+      )}
 
       {/* Totais por Categoria */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

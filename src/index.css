@@ -186,6 +186,19 @@
     box-shadow: var(--shadow-card);
   }
 
+  /* FX Pulsar — tile-focus (Xbox): sobe + anel de glow no hover. Usa o token atual. */
+  .fx-tile {
+    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .fx-tile:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 0 0 1.5px hsl(var(--primary) / 0.35), 0 10px 32px hsl(var(--primary) / 0.16);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fx-tile { transition: none; }
+    .fx-tile:hover { transform: none; }
+  }
+
   .animate-slide-up {
     animation: slideUp 0.5s ease forwards;
   }

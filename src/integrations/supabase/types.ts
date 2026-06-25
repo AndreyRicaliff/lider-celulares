@@ -1,4 +1,5 @@
-export type Json =
+[36;1m▸ CLIENTES  (org kurdbgvxszwytkkmxdcl)
+[mexport type Json =
   | string
   | number
   | boolean
@@ -10,7 +11,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -24,7 +50,9 @@ export type Database = {
           id: string
           loja_id: string
           mes: string
+          pagamento: Json
           status: string | null
+          total_desconto: number | null
           valor_total: number
           vendedor_nome: string
         }
@@ -37,7 +65,9 @@ export type Database = {
           id?: string
           loja_id: string
           mes: string
+          pagamento?: Json
           status?: string | null
+          total_desconto?: number | null
           valor_total?: number
           vendedor_nome: string
         }
@@ -50,7 +80,9 @@ export type Database = {
           id?: string
           loja_id?: string
           mes?: string
+          pagamento?: Json
           status?: string | null
+          total_desconto?: number | null
           valor_total?: number
           vendedor_nome?: string
         }
@@ -355,6 +387,84 @@ export type Database = {
           },
         ]
       }
+      estoque_snapshot: {
+        Row: {
+          categoria: string | null
+          created_at: string | null
+          data_entrada: string | null
+          id: string
+          imei: string | null
+          loja_id: string
+          nome: string | null
+          quantidade: number | null
+          serial: string | null
+          sku: string | null
+          synced_at: string | null
+          valor_venda: number | null
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string | null
+          data_entrada?: string | null
+          id?: string
+          imei?: string | null
+          loja_id: string
+          nome?: string | null
+          quantidade?: number | null
+          serial?: string | null
+          sku?: string | null
+          synced_at?: string | null
+          valor_venda?: number | null
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string | null
+          data_entrada?: string | null
+          id?: string
+          imei?: string | null
+          loja_id?: string
+          nome?: string | null
+          quantidade?: number | null
+          serial?: string | null
+          sku?: string | null
+          synced_at?: string | null
+          valor_venda?: number | null
+        }
+        Relationships: []
+      }
+      faturamento_loja: {
+        Row: {
+          atendimentos: number
+          faturamento_extra: number
+          juros: number
+          liquido: number
+          loja_id: string
+          mes: string
+          total_bruto: number
+          updated_at: string
+        }
+        Insert: {
+          atendimentos?: number
+          faturamento_extra?: number
+          juros?: number
+          liquido?: number
+          loja_id: string
+          mes: string
+          total_bruto?: number
+          updated_at?: string
+        }
+        Update: {
+          atendimentos?: number
+          faturamento_extra?: number
+          juros?: number
+          liquido?: number
+          loja_id?: string
+          mes?: string
+          total_bruto?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lojas: {
         Row: {
           created_at: string
@@ -390,6 +500,7 @@ export type Database = {
       }
       sync_logs: {
         Row: {
+          api_calls_made: number | null
           created_at: string
           error_message: string | null
           id: string
@@ -403,6 +514,7 @@ export type Database = {
           vendedores_atualizados: string[]
         }
         Insert: {
+          api_calls_made?: number | null
           created_at?: string
           error_message?: string | null
           id?: string
@@ -416,6 +528,7 @@ export type Database = {
           vendedores_atualizados?: string[]
         }
         Update: {
+          api_calls_made?: number | null
           created_at?: string
           error_message?: string | null
           id?: string
@@ -502,33 +615,45 @@ export type Database = {
         Row: {
           colaborador_id: string | null
           created_at: string
+          custo: number | null
+          desconto: number | null
           detalhes: Json
           geral: number | null
           id: string
+          juros: number | null
           loja_id: string
           mes: string
+          valor_bruto: number
           valor_total: number
           vendedor_nome: string
         }
         Insert: {
           colaborador_id?: string | null
           created_at?: string
+          custo?: number | null
+          desconto?: number | null
           detalhes?: Json
           geral?: number | null
           id?: string
+          juros?: number | null
           loja_id: string
           mes: string
+          valor_bruto?: number
           valor_total?: number
           vendedor_nome: string
         }
         Update: {
           colaborador_id?: string | null
           created_at?: string
+          custo?: number | null
+          desconto?: number | null
           detalhes?: Json
           geral?: number | null
           id?: string
+          juros?: number | null
           loja_id?: string
           mes?: string
+          valor_bruto?: number
           valor_total?: number
           vendedor_nome?: string
         }
@@ -554,14 +679,18 @@ export type Database = {
           acessorios: number
           colaborador_id: string | null
           created_at: string
+          custo: number | null
           data: string
+          desconto: number | null
           detalhes: Json
           geral: number | null
           id: string
+          juros: number | null
           loja_id: string
           mes: string
           servicos: number
           smartphones: number
+          valor_bruto: number
           valor_total: number
           vendedor_nome: string
         }
@@ -569,14 +698,18 @@ export type Database = {
           acessorios?: number
           colaborador_id?: string | null
           created_at?: string
+          custo?: number | null
           data: string
+          desconto?: number | null
           detalhes?: Json
           geral?: number | null
           id?: string
+          juros?: number | null
           loja_id: string
           mes: string
           servicos?: number
           smartphones?: number
+          valor_bruto?: number
           valor_total?: number
           vendedor_nome: string
         }
@@ -584,14 +717,18 @@ export type Database = {
           acessorios?: number
           colaborador_id?: string | null
           created_at?: string
+          custo?: number | null
           data?: string
+          desconto?: number | null
           detalhes?: Json
           geral?: number | null
           id?: string
+          juros?: number | null
           loja_id?: string
           mes?: string
           servicos?: number
           smartphones?: number
+          valor_bruto?: number
           valor_total?: number
           vendedor_nome?: string
         }
@@ -634,6 +771,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_colaborador_id: { Args: never; Returns: string }
+      current_user_lojas: { Args: never; Returns: string[] }
       get_colaborador_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -642,6 +781,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_gerente: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "colaborador" | "supervisao"
@@ -771,6 +911,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "colaborador", "supervisao"],

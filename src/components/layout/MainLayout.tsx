@@ -13,6 +13,7 @@ import { RelatoriosNumericos } from '@/pages/RelatoriosNumericos';
 import { MeuRelatorioPage } from '@/pages/MeuRelatorioPage';
 import { SupervisaoFolhaPage } from '@/pages/SupervisaoFolhaPage';
 import { VendasDiariaPage } from '@/pages/VendasDiariaPage';
+import { VendasPage } from '@/pages/VendasPage';
 import { EstoquePage } from '@/pages/EstoquePage';
 
 interface MainLayoutProps {
@@ -35,6 +36,7 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
     if (isSupervisao) {
       switch (currentView) {
         case 'dashboard': return <Dashboard />;
+        case 'vendas': return <VendasPage />;
         case 'vendas-diarias': return <VendasDiariaPage />;
         case 'folha': return <FolhaPagamentoPage readOnly />;
         case 'supervisao-folha': return <SupervisaoFolhaPage />;
@@ -48,6 +50,7 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
     if (isGerente && colaboradorLojaId) {
       switch (currentView) {
         case 'dashboard': return <Dashboard colaboradorLojaId={colaboradorLojaId} />;
+        case 'vendas': return <VendasPage colaboradorLojaId={colaboradorLojaId} />;
         case 'relatorio': return <MeuRelatorioPage />;
         case 'folha': return <FolhaPagamentoPage gerenteLojaId={colaboradorLojaId} />;
         case 'relatorios': return <RelatoriosPage gerenteLojaId={colaboradorLojaId} />;
@@ -69,6 +72,7 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
 
     switch (currentView) {
       case 'dashboard': return <Dashboard />;
+      case 'vendas': return <VendasPage />;
       case 'colaboradores': return <ColaboradoresPage />;
       case 'vendas-diarias': return <VendasDiariaPage />;
       case 'folha': return <FolhaPagamentoPage />;

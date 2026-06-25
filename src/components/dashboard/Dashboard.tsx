@@ -23,6 +23,8 @@ import { useFaturamento } from '@/hooks/useFaturamento';
 import { FaturamentoCards } from './FaturamentoCards';
 import { FaturamentoCrossLoja } from './FaturamentoCrossLoja';
 import { CategoriaCards } from './CategoriaCards';
+import { RankingColaboradores } from './RankingColaboradores';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
 import { TrendingUp, Users, DollarSign, Award, ShoppingBag, Smartphone, Shield, CalendarIcon, RefreshCw, Percent } from 'lucide-react';
 import { RankingBotons } from '@/components/ranking/RankingBotons';
@@ -38,9 +40,10 @@ import { cn } from '@/lib/utils';
 
 interface DashboardProps {
   colaboradorLojaId?: string | null;
+  variant?: 'resumo' | 'vendas';
 }
 
-export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
+export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardProps = {}) => {
   const { selectedLoja, selectedMes, setSelectedMes, setSelectedLoja } = useAppStore();
   const { isGerente, isAdmin } = useAuth();
   const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
@@ -405,164 +408,70 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
         </CardContent>
       </Card>
 
-      {/* Status das Metas */}
-      {effectiveLoja && isSoledadeMonteiro && (
-        <MetaStatusCard
-          totalParaPrata={totalParaMetaPrata}
-          totalParaOuro={totalParaMetaOuro}
-          metaPrata={metaPrata}
-          metaOuro={metaOuro}
-          bonusPrata={bonusPrata}
-          bonusOuro={bonusOuro}
-          totalFaturado={totalVendas}
-          totalBruto={totalBruto > 0 ? totalBruto : undefined}
-        />
-      )}
-
-      {effectiveLoja && isCampinaNatal && (
-        <MetaStatusCard
-          totalParaPrata={totalParaMetaPrata}
-          totalParaOuro={totalParaMetaOuro}
-          metaPrata={metaPrata}
-          metaOuro={metaOuro}
-          bonusPrata={0}
-          bonusOuro={numericConfig?.loja_bonus_meta_ouro || 200}
-          totalFaturado={totalVendas}
-          totalBruto={totalBruto > 0 ? totalBruto : undefined}
-        />
-      )}
-
-
-      {/* Vendas do Dia por Loja */}
-      <DailyStoreSalesCards
-        vendasDiarias={vendasDiarias}
-        selectedMes={selectedMes}
-        allConfigs={allConfigs}
-      />
-
-      {/* Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-        <FaturamentoCards faturamentos={faturamentos} configs={allConfigs ?? {}} effectiveLoja={effectiveLoja} titulo={tituloEscopo} />
-        <MetricCard
-          icon={<DollarSign className="text-success" />}
-          label="Total Comissões"
-          value={temFiltroAtivo ? '---' : formatCurrency(totalComissoes)}
-          subtitle={temFiltroAtivo ? 'Disponível apenas no mensal' : (totalComissoes === 0 ? 'Execute o cálculo' : undefined)}
-        />
-        <MetricCard
-          icon={<Users className="text-primary" />}
-          label="Vendedores"
-          value={String(totalVendedores)}
-        />
-        <MetricCard
-          icon={<Award className="text-warning" />}
-          label="Comissão Média"
-          value={temFiltroAtivo ? '---' : formatCurrency(mediaComissao)}
-          subtitle={temFiltroAtivo ? 'Disponível apenas no mensal' : (mediaComissao === 0 ? 'Execute o cálculo' : undefined)}
-        />
-      </div>
-
-      {!effectiveLoja && faturamentos.length > 1 && (
-        <FaturamentoCrossLoja faturamentos={faturamentos} configs={allConfigs ?? {}} />
-      )}
-
-      {/* Totais por Categoria */}
-      <CategoriaCards totais={totaisPorCategoria} juros={juros} totalBruto={totalBruto} />
-
-      {/* Gráfico de Vendas Diárias */}
-      {effectiveLoja ? (
-        <VendasDiariasChart lojaId={effectiveLoja} mes={selectedMes} dataInicio={dataInicioStr} dataFim={dataFimStr} />
-      ) : (
-        LOJAS_IDS.map(lojaId => (
-          <VendasDiariasChart key={lojaId} lojaId={lojaId} mes={selectedMes} dataInicio={dataInicioStr} dataFim={dataFimStr} />
-        ))
-      )}
-
-      {/* Gráfico Smartphones vs Serviços */}
-      {effectiveLoja ? (
-        <SmartServicosChart lojaId={effectiveLoja} mes={selectedMes} dataInicio={dataInicioStr} dataFim={dataFimStr} />
-      ) : (
-        LOJAS_IDS.map(lojaId => (
-          <SmartServicosChart key={lojaId} lojaId={lojaId} mes={selectedMes} dataInicio={dataInicioStr} dataFim={dataFimStr} />
-        ))
-      )}
-
-      {/* Histórico 6 meses */}
-      <HistoricoLojaChart selectedMes={selectedMes} lojaId={effectiveLoja} />
-
-      {/* Comparativo de Lojas (só quando todas as lojas estão selecionadas) */}
-      {!effectiveLoja && (
-        <LojaComparativoTable
-          selectedMes={selectedMes}
-          allConfigs={allConfigs}
-          vendasMensais={(vendas || []) as any}
-          vendasDiarias={vendasDiarias}
-        />
-      )}
-
-      {/* Ranking Vendas */}
-      <Card>
-        <CardHeader className="pb-4 border-b border-border/50 p-4 sm:p-6">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <span className="text-primary">#</span> Top Colaboradores (Vendas)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {ranking.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8 text-sm">
-              Nenhum dado de colaboradores cadastrados para o período.
-            </p>
-          ) : (
-            <div className="divide-y divide-border/50">
-              {ranking.map((item, index) => {
-                const lojaConfig = allConfigs?.[item.lojaId]?.numericConfig;
-                const faltaFase = lojaConfig ? (() => {
-                  const f1 = lojaConfig.servicos_meta_fase1 || 1500;
-                  const f2 = lojaConfig.servicos_meta_fase2 || 2000;
-                  const f3 = lojaConfig.servicos_meta_fase3 || 2500;
-                  const s = item.servicos;
-                  if (s >= f3) return { label: '✓ F3 — Máximo', color: 'text-success' };
-                  if (s >= f2) return { label: `✓F2 · Falta ${formatCurrency(f3 - s)} p/ F3`, color: 'text-amber-400' };
-                  if (s >= f1) return { label: `✓F1 · Falta ${formatCurrency(f2 - s)} p/ F2`, color: 'text-amber-400/70' };
-                  return { label: `Falta ${formatCurrency(f1 - s)} p/ F1`, color: 'text-destructive/70' };
-                })() : null;
-
-                return (
-                  <div key={item.nome} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-accent/50 transition-colors">
-                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0 ${
-                      index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-background' :
-                      index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-background' :
-                      index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-foreground' :
-                      'bg-muted border border-border text-muted-foreground'
-                    }`}>
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm sm:text-base truncate">{item.nome}</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{item.loja}</p>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs mt-1">
-                        <span className="text-blue-400 font-medium">📱 {formatCurrency(item.smartphones)}</span>
-                        <span className="text-purple-400 font-medium">🛡️ {formatCurrency(item.servicos)}</span>
-                        <span className="text-green-400">🛍️ {formatCurrency(item.acessorios)}</span>
-                        {item.geral > 0 && <span className="text-slate-400 font-medium">📦 GERAL: {formatCurrency(item.geral)}</span>}
-                      </div>
-                      {faltaFase && (
-                        <p className={`text-[10px] font-semibold mt-0.5 ${faltaFase.color}`}>
-                          Serv: {faltaFase.label}
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-sm sm:text-lg font-semibold text-primary flex-shrink-0">{formatCurrency(item.total)}</p>
-                  </div>
-                );
-              })}
-            </div>
+      {variant === 'resumo' ? (
+        <>
+          {/* KPIs */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            <FaturamentoCards faturamentos={faturamentos} configs={allConfigs ?? {}} effectiveLoja={effectiveLoja} titulo={tituloEscopo} />
+            <MetricCard icon={<DollarSign className="text-success" />} label="Total Comissões" value={temFiltroAtivo ? '---' : formatCurrency(totalComissoes)} subtitle={temFiltroAtivo ? 'Disponível apenas no mensal' : (totalComissoes === 0 ? 'Execute o cálculo' : undefined)} />
+            <MetricCard icon={<Users className="text-primary" />} label="Vendedores" value={String(totalVendedores)} />
+            <MetricCard icon={<Award className="text-warning" />} label="Comissão Média" value={temFiltroAtivo ? '---' : formatCurrency(mediaComissao)} subtitle={temFiltroAtivo ? 'Disponível apenas no mensal' : (mediaComissao === 0 ? 'Execute o cálculo' : undefined)} />
+          </div>
+          {/* 1 gráfico: faturamento por loja */}
+          {faturamentos.length > 0 && (
+            <FaturamentoCrossLoja faturamentos={faturamentos} configs={allConfigs ?? {}} somenteGrafico />
           )}
-        </CardContent>
-      </Card>
+        </>
+      ) : (
+        <Tabs defaultValue="loja" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+            <TabsTrigger value="loja">Por Loja</TabsTrigger>
+            <TabsTrigger value="equipe">Equipe</TabsTrigger>
+            <TabsTrigger value="colaborador">Colaborador</TabsTrigger>
+            <TabsTrigger value="diarias">Diárias</TabsTrigger>
+          </TabsList>
 
-      {/* Ranking Botons */}
-      <RankingBotons />
+          <TabsContent value="loja" className="space-y-4 sm:space-y-6 mt-4">
+            {effectiveLoja && isSoledadeMonteiro && (
+              <MetaStatusCard totalParaPrata={totalParaMetaPrata} totalParaOuro={totalParaMetaOuro} metaPrata={metaPrata} metaOuro={metaOuro} bonusPrata={bonusPrata} bonusOuro={bonusOuro} totalFaturado={totalVendas} totalBruto={totalBruto > 0 ? totalBruto : undefined} />
+            )}
+            {effectiveLoja && isCampinaNatal && (
+              <MetaStatusCard totalParaPrata={totalParaMetaPrata} totalParaOuro={totalParaMetaOuro} metaPrata={metaPrata} metaOuro={metaOuro} bonusPrata={0} bonusOuro={numericConfig?.loja_bonus_meta_ouro || 200} totalFaturado={totalVendas} totalBruto={totalBruto > 0 ? totalBruto : undefined} />
+            )}
+            <DailyStoreSalesCards vendasDiarias={vendasDiarias} selectedMes={selectedMes} allConfigs={allConfigs} />
+            {!effectiveLoja && faturamentos.length > 1 && (
+              <FaturamentoCrossLoja faturamentos={faturamentos} configs={allConfigs ?? {}} />
+            )}
+            <CategoriaCards totais={totaisPorCategoria} juros={juros} totalBruto={totalBruto} />
+            <HistoricoLojaChart selectedMes={selectedMes} lojaId={effectiveLoja} />
+            {!effectiveLoja && (
+              <LojaComparativoTable selectedMes={selectedMes} allConfigs={allConfigs} vendasMensais={(vendas || []) as any} vendasDiarias={vendasDiarias} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="equipe" className="space-y-4 mt-4">
+            <RankingColaboradores ranking={ranking} allConfigs={allConfigs} />
+            <RankingBotons />
+          </TabsContent>
+
+          <TabsContent value="colaborador" className="mt-4">
+            <RankingColaboradores ranking={ranking} allConfigs={allConfigs} />
+          </TabsContent>
+
+          <TabsContent value="diarias" className="space-y-4 mt-4">
+            {effectiveLoja ? (
+              <VendasDiariasChart lojaId={effectiveLoja} mes={selectedMes} dataInicio={dataInicioStr} dataFim={dataFimStr} />
+            ) : (
+              LOJAS_IDS.map(lojaId => <VendasDiariasChart key={lojaId} lojaId={lojaId} mes={selectedMes} dataInicio={dataInicioStr} dataFim={dataFimStr} />)
+            )}
+            {effectiveLoja ? (
+              <SmartServicosChart lojaId={effectiveLoja} mes={selectedMes} dataInicio={dataInicioStr} dataFim={dataFimStr} />
+            ) : (
+              LOJAS_IDS.map(lojaId => <SmartServicosChart key={lojaId} lojaId={lojaId} mes={selectedMes} dataInicio={dataInicioStr} dataFim={dataFimStr} />)
+            )}
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 };

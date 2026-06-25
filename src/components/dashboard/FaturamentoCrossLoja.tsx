@@ -14,12 +14,13 @@ import {
 interface Props {
   faturamentos: FaturamentoLoja[];
   configs: Record<string, { numericConfig: Record<string, number> }>;
+  somenteGrafico?: boolean;
 }
 
 const nomeLoja = (id: string) => LOJAS[id as keyof typeof LOJAS] ?? id;
 const fmtTick = (v: number) => (v >= 1000 ? `R$${(v / 1000).toFixed(0)}k` : `R$${v}`);
 
-export const FaturamentoCrossLoja = ({ faturamentos, configs }: Props) => {
+export const FaturamentoCrossLoja = ({ faturamentos, configs, somenteGrafico = false }: Props) => {
   const linhas = useMemo(
     () =>
       faturamentos
@@ -60,6 +61,7 @@ export const FaturamentoCrossLoja = ({ faturamentos, configs }: Props) => {
           </ResponsiveContainer>
         </div>
 
+        {!somenteGrafico && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -89,6 +91,7 @@ export const FaturamentoCrossLoja = ({ faturamentos, configs }: Props) => {
             })}
           </TableBody>
         </Table>
+        )}
       </CardContent>
     </Card>
   );

@@ -11,6 +11,9 @@ export interface RankingItem {
   servicos: number;
   acessorios: number;
   geral: number;
+  cases?: number;
+  pelicula?: number;
+  vendas?: number;
 }
 
 interface Props {
@@ -47,7 +50,7 @@ export const RankingColaboradores = ({ ranking, allConfigs }: Props) => (
         <p className="text-center text-muted-foreground py-8 text-sm">Nenhum dado de colaboradores cadastrados para o período.</p>
       ) : (
         <div className="divide-y divide-border/50">
-          {ranking.map((item, index) => {
+          {ranking.slice(0, 10).map((item, index) => {
             const faltaFase = faseServico(allConfigs?.[item.lojaId]?.numericConfig, item.servicos);
             return (
               <div key={item.nome} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-accent/50 transition-colors">

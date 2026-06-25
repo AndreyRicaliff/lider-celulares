@@ -24,6 +24,7 @@ import { FaturamentoCards } from './FaturamentoCards';
 import { FaturamentoCrossLoja } from './FaturamentoCrossLoja';
 import { CategoriaCards } from './CategoriaCards';
 import { RankingColaboradores } from './RankingColaboradores';
+import { ColaboradorTab } from './ColaboradorTab';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
 import { TrendingUp, Users, DollarSign, Award, ShoppingBag, Smartphone, Shield, CalendarIcon, RefreshCw, Percent } from 'lucide-react';
@@ -189,7 +190,7 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
         totalComissoes: totalComissoesVal,
         totalVendedores: registeredVendedores.size,
         mediaComissao: 0,
-        ranking: Object.values(vendedorTotals).sort((a, b) => b.total - a.total).slice(0, 10),
+        ranking: Object.values(vendedorTotals).sort((a, b) => b.total - a.total),
       };
     }
     
@@ -266,7 +267,7 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
         ...item,
         loja: item.lojas.size > 1 ? 'Multiloja' : (LOJAS[Array.from(item.lojas)[0] as keyof typeof LOJAS] || Array.from(item.lojas)[0]),
         lojaId: item.lojas.size > 1 ? 'multiloja' : item.primaryLojaId,
-      })).sort((a, b) => b.total - a.total).slice(0, 10),
+      })).sort((a, b) => b.total - a.total),
     };
   }, [temFiltroPeriodo, vendasDiariasFiltradas, vendas, filteredVendas, filteredComissoes, colaboradores]);
 
@@ -455,7 +456,7 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
           </TabsContent>
 
           <TabsContent value="colaborador" className="mt-4">
-            <RankingColaboradores ranking={ranking} allConfigs={allConfigs} />
+            <ColaboradorTab ranking={ranking} />
           </TabsContent>
 
           <TabsContent value="diarias" className="space-y-4 mt-4">

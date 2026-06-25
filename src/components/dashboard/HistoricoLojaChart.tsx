@@ -123,8 +123,9 @@ export const HistoricoLojaChart = ({ selectedMes, lojaId }: HistoricoLojaChartPr
               <YAxis tickFormatter={fmtTick} tick={{ fill: '#7A9BC4', fontSize: 11 }} axisLine={false} tickLine={false} width={52} />
               <Tooltip
                 formatter={fmtTooltip as any}
-                contentStyle={{ background: '#0F1829', border: '1px solid #1A2D47', borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: '#E8EEFF', fontWeight: 600, marginBottom: 4 }}
+                contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: 4 }}
+                itemStyle={{ color: 'hsl(var(--foreground))' }}
               />
               {lojas.length > 1 && <Legend formatter={(v) => LOJAS[v as keyof typeof LOJAS] || v} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />}
               {lojas.map(id => (

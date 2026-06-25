@@ -138,11 +138,9 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                 <NavItem icon={<CalendarDays size={18} />} label="Vendas Diárias" active={currentView === 'vendas-diarias'} onClick={() => handleNavigation('vendas-diarias')} />
                 <NavItem icon={<Package size={18} />} label="Estoque Inteligente" active={currentView === 'estoque'} onClick={() => handleNavigation('estoque')} />
               </NavGroup>
-              <NavGroup title="Financeiro">
+              <NavGroup title="Comissões">
                 <NavItem icon={<FileText size={18} />} label="Folha de Pagamento" active={currentView === 'folha'} onClick={() => handleNavigation('folha')} />
                 <NavItem icon={<Briefcase size={18} />} label="Supervisão — Folha" active={currentView === 'supervisao-folha'} onClick={() => handleNavigation('supervisao-folha')} />
-              </NavGroup>
-              <NavGroup title="Relatórios">
                 <NavItem icon={<BarChart3 size={18} />} label="Relatórios" active={currentView === 'relatorio'} onClick={() => handleNavigation('relatorio')} />
                 <NavItem icon={<Hash size={18} />} label="Relatórios Numéricos" active={currentView === 'relatorios-numericos'} onClick={() => handleNavigation('relatorios-numericos')} />
               </NavGroup>

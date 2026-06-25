@@ -248,6 +248,8 @@ export const VendasDiariasChart = ({ lojaId, mes, dataInicio, dataFim }: VendasD
                 border: '1px solid hsl(var(--border))',
                 borderRadius: '8px',
               }}
+              labelStyle={{ color: 'hsl(var(--foreground))' }}
+              itemStyle={{ color: 'hsl(var(--foreground))' }}
               labelFormatter={(value) => {
                 try {
                   return format(parseISO(value as string), "dd 'de' MMMM", { locale: ptBR });

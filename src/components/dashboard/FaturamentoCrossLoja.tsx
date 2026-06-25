@@ -51,6 +51,7 @@ export const FaturamentoCrossLoja = ({ faturamentos, configs, somenteGrafico = f
                 formatter={(v: number) => [formatCurrency(v), 'Faturamento']}
                 contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+                itemStyle={{ color: 'hsl(var(--foreground))' }}
               />
               <Bar dataKey="valor" radius={[6, 6, 0, 0]} maxBarSize={56}>
                 {chartData.map((_, i) => (

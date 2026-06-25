@@ -22,6 +22,7 @@ import { LOJAS, LOJAS_IDS, isIgnoredColumn } from '@/lib/constants';
 import { useFaturamento } from '@/hooks/useFaturamento';
 import { FaturamentoCards } from './FaturamentoCards';
 import { FaturamentoCrossLoja } from './FaturamentoCrossLoja';
+import { CategoriaCards } from './CategoriaCards';
 import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
 import { TrendingUp, Users, DollarSign, Award, ShoppingBag, Smartphone, Shield, CalendarIcon, RefreshCw, Percent } from 'lucide-react';
 import { RankingBotons } from '@/components/ranking/RankingBotons';
@@ -466,90 +467,7 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
       )}
 
       {/* Totais por Categoria */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Smartphone className="text-blue-500 flex-shrink-0" size={18} />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase truncate">Smartphones</p>
-                <p className="text-sm sm:text-lg font-bold truncate">{formatCurrency(totaisPorCategoria.smartphones)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <ShoppingBag className="text-green-500 flex-shrink-0" size={18} />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase truncate">Acessórios</p>
-                <p className="text-sm sm:text-lg font-bold truncate">{formatCurrency(totaisPorCategoria.acessorios)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-pink-500">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <ShoppingBag className="text-pink-500 flex-shrink-0" size={18} />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase truncate">Cases</p>
-                <p className="text-sm sm:text-lg font-bold truncate">{formatCurrency(totaisPorCategoria.cases)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-orange-500">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-[18px] h-[18px] rounded bg-orange-500/20 flex items-center justify-center text-orange-500 text-xs font-bold flex-shrink-0">P</div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase truncate">Película</p>
-                <p className="text-sm sm:text-lg font-bold truncate">{formatCurrency(totaisPorCategoria.pelicula)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-purple-500">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Shield className="text-purple-500 flex-shrink-0" size={18} />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase truncate">Serviços</p>
-                <p className="text-sm sm:text-lg font-bold truncate">{formatCurrency(totaisPorCategoria.servicos)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-slate-500">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <ShoppingBag className="text-slate-500 flex-shrink-0" size={18} />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase truncate">Geral</p>
-                <p className="text-sm sm:text-lg font-bold truncate">{formatCurrency(totaisPorCategoria.geral)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        {juros > 0 && (
-          <Card className="border-l-4 border-l-amber-500">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Percent className="text-amber-500 flex-shrink-0" size={18} />
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase truncate">Juros Parcelamento</p>
-                  <p className="text-sm sm:text-lg font-bold truncate text-amber-400">{formatCurrency(juros)}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    {totalBruto > 0 ? `${((juros / totalBruto) * 100).toFixed(1)}% do bruto` : ''}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      <CategoriaCards totais={totaisPorCategoria} juros={juros} totalBruto={totalBruto} />
 
       {/* Gráfico de Vendas Diárias */}
       {effectiveLoja ? (

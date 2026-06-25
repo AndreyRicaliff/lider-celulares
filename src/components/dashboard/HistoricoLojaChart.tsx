@@ -4,8 +4,9 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { LOJAS, LOJAS_IDS, isIgnoredColumn } from '@/lib/constants';
+import { LOJAS, LOJAS_IDS } from '@/lib/constants';
 import { formatCurrency } from '@/lib/formatters';
+import { computeTotalDetalhes } from '@/lib/vendasTotais';
 
 const LOJA_COLORS: Record<string, string> = {
   'soledade':       '#7048E8',
@@ -20,15 +21,6 @@ const MESES_PT = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'S
 function mesLabel(mes: string): string {
   const [year, month] = mes.split('-').map(Number);
   return `${MESES_PT[month]}/${String(year).slice(2)}`;
-}
-
-function computeTotal(detalhes: Record<string, number>): number {
-  const realSjuros = Number(detalhes?.['VALOR REAL (S/ JUROS)'] || 0);
-  if (realSjuros > 0) return realSjuros;
-  return Object.entries(detalhes || {}).reduce((sum, [k, v]) => {
-    if (k !== '_upload_source' && typeof v === 'number' && !isIgnoredColumn(k.toUpperCase())) return sum + v;
-    return sum;
-  }, 0);
 }
 
 interface HistoricoLojaChartProps {
@@ -76,7 +68,7 @@ export const HistoricoLojaChart = ({ selectedMes, lojaId }: HistoricoLojaChartPr
     for (const v of vendasHistorico) {
       if (!byMesLoja[v.mes]) continue;
       const detalhes = (v.detalhes || {}) as Record<string, number>;
-      byMesLoja[v.mes][v.loja_id] = (byMesLoja[v.mes][v.loja_id] || 0) + computeTotal(detalhes);
+      byMesLoja[v.mes][v.loja_id] = (byMesLoja[v.mes][v.loja_id] || 0) + computeTotalDetalhes(detalhes);
     }
 
     return lastSixMonths.map(mes => {

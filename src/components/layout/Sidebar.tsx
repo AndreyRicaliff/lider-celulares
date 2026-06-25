@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { LOJAS } from '@/lib/constants';
 import { useAppStore } from '@/store/appStore';
@@ -18,6 +19,7 @@ import {
   Package,
   PanelLeftClose,
   PanelLeftOpen,
+  ChevronDown,
 } from 'lucide-react';
 import { LiderLogo } from './LiderLogo';
 
@@ -123,25 +125,23 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
           {/* ===== ADMIN / SUPERVISÃO — navegação por FUNÇÃO (loja via filtro no topo) ===== */}
           {(isAdmin || isSupervisao) && (
             <>
-              <SectionLabel>Operação</SectionLabel>
-              <NavItem icon={<CalendarDays size={18} />} label="Vendas Diárias" active={currentView === 'vendas-diarias'} onClick={() => handleNavigation('vendas-diarias')} />
-              <NavItem icon={<Package size={18} />} label="Estoque Inteligente" active={currentView === 'estoque'} onClick={() => handleNavigation('estoque')} />
-
-              <SectionLabel>Financeiro</SectionLabel>
-              <NavItem icon={<FileText size={18} />} label="Folha de Pagamento" active={currentView === 'folha'} onClick={() => handleNavigation('folha')} />
-              <NavItem icon={<Briefcase size={18} />} label="Supervisão — Folha" active={currentView === 'supervisao-folha'} onClick={() => handleNavigation('supervisao-folha')} />
-
-              <SectionLabel>Relatórios</SectionLabel>
-              <NavItem icon={<BarChart3 size={18} />} label="Relatórios" active={currentView === 'relatorio'} onClick={() => handleNavigation('relatorio')} />
-              <NavItem icon={<Hash size={18} />} label="Relatórios Numéricos" active={currentView === 'relatorios-numericos'} onClick={() => handleNavigation('relatorios-numericos')} />
-
-              {/* Gestão — só admin */}
+              <NavGroup title="Operação">
+                <NavItem icon={<CalendarDays size={18} />} label="Vendas Diárias" active={currentView === 'vendas-diarias'} onClick={() => handleNavigation('vendas-diarias')} />
+                <NavItem icon={<Package size={18} />} label="Estoque Inteligente" active={currentView === 'estoque'} onClick={() => handleNavigation('estoque')} />
+              </NavGroup>
+              <NavGroup title="Financeiro">
+                <NavItem icon={<FileText size={18} />} label="Folha de Pagamento" active={currentView === 'folha'} onClick={() => handleNavigation('folha')} />
+                <NavItem icon={<Briefcase size={18} />} label="Supervisão — Folha" active={currentView === 'supervisao-folha'} onClick={() => handleNavigation('supervisao-folha')} />
+              </NavGroup>
+              <NavGroup title="Relatórios">
+                <NavItem icon={<BarChart3 size={18} />} label="Relatórios" active={currentView === 'relatorio'} onClick={() => handleNavigation('relatorio')} />
+                <NavItem icon={<Hash size={18} />} label="Relatórios Numéricos" active={currentView === 'relatorios-numericos'} onClick={() => handleNavigation('relatorios-numericos')} />
+              </NavGroup>
               {isAdmin && (
-                <>
-                  <SectionLabel>Gestão</SectionLabel>
+                <NavGroup title="Gestão">
                   <NavItem icon={<Users size={18} />} label="Colaboradores" active={currentView === 'colaboradores'} onClick={() => handleNavigation('colaboradores')} />
                   <NavItem icon={<Settings size={18} />} label="Configurações" active={currentView === 'configuracoes'} onClick={() => handleNavigation('configuracoes')} />
-                </>
+                </NavGroup>
               )}
             </>
           )}
@@ -174,6 +174,31 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => {
     <div className="mt-4 mb-2">
       <span className={cn('text-xs text-sidebar-foreground uppercase tracking-wider px-3', collapsed && 'lg:hidden')}>{children}</span>
       {collapsed && <div className="hidden lg:block mx-2 mt-1 border-t border-sidebar-border/60" />}
+    </div>
+  );
+};
+
+const NavGroup = ({ title, children }: { title: string; children: React.ReactNode }) => {
+  const collapsed = useAppStore((s) => s.sidebarCollapsed);
+  const [open, setOpen] = useState(true);
+  if (collapsed) {
+    return (
+      <div className="mt-3">
+        <div className="hidden lg:block mx-2 mb-1 border-t border-sidebar-border/60" />
+        <div className="space-y-1">{children}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-sidebar-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+      >
+        <span>{title}</span>
+        <ChevronDown size={14} className={cn('transition-transform', !open && '-rotate-90')} />
+      </button>
+      {open && <div className="mt-1 space-y-1">{children}</div>}
     </div>
   );
 };

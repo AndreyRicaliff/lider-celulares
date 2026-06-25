@@ -34,6 +34,9 @@ const DRIFT_LIMITE = 0.02;
 // (configuracoes.config.bruto_inclui_juros). Lojas sem evidência → false.
 const BRUTO_INCLUI_JUROS_DEFAULT: Record<string, boolean> = {
   natal: true,
+  monteiro: true,
+  soledade: true,
+  // campina-grande e caruaru: Total bruto NÃO inclui juros → false (default)
 };
 
 export function calcFaturamentoEspelho(

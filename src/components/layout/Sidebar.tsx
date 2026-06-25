@@ -90,20 +90,22 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          <NavItem
-            icon={<Home size={18} />}
-            label="Visão Geral"
-            active={currentView === 'dashboard'}
-            onClick={() => handleNavigation('dashboard')}
-          />
-          {(isAdmin || isSupervisao || isGerente) && (
+          <NavGroup title="Painel">
             <NavItem
-              icon={<ShoppingCart size={18} />}
-              label="Vendas"
-              active={currentView === 'vendas'}
-              onClick={() => handleNavigation('vendas')}
+              icon={<Home size={18} />}
+              label="Visão Geral"
+              active={currentView === 'dashboard'}
+              onClick={() => handleNavigation('dashboard')}
             />
-          )}
+            {(isAdmin || isSupervisao || isGerente) && (
+              <NavItem
+                icon={<ShoppingCart size={18} />}
+                label="Vendas"
+                active={currentView === 'vendas'}
+                onClick={() => handleNavigation('vendas')}
+              />
+            )}
+          </NavGroup>
 
           {/* ===== COLABORADOR (vendedor/VR/trainee) — loja fixa ===== */}
           {isColaborador && !isGerente && (

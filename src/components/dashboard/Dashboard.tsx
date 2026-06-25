@@ -27,7 +27,7 @@ import { RankingColaboradores } from './RankingColaboradores';
 import { ColaboradorTab } from './ColaboradorTab';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { isLojaCampinaNatal, isLojaSoledadeMonteiro } from '@/lib/lojaRules';
-import { TrendingUp, Users, DollarSign, Award, ShoppingBag, Smartphone, Shield, CalendarIcon, RefreshCw, Percent } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, DollarSign, Award, ShoppingBag, Smartphone, Shield, CalendarIcon, RefreshCw, Percent, Wallet } from 'lucide-react';
 import { RankingBotons } from '@/components/ranking/RankingBotons';
 import { MetaStatusCard } from './MetaStatusCard';
 import { VendasDiariasChart } from './VendasDiariasChart';
@@ -314,6 +314,16 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
     }
   }, [dataInicio]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Gastos derivados do que já existe (folha + comissões + CMV = operação; adiantamentos = fora operação).
+  // Despesas fixas/avulsas e compra de seminovo exigem fonte nova (pendentes).
+  const gastos = useMemo(() => {
+    const folha = (comissoes || []).reduce((s, c) =>
+      s + Number(c.comissao_base || 0) + Number(c.bonus_automatico || 0) + Number(c.bonus_manual || 0) + Number(c.salario || 0) + Number(c.ajuda_custo || 0), 0);
+    const cmv = (vendas || []).reduce((s, v) => s + Number((v as any).custo || 0), 0);
+    const adiantamentos = (comissoes || []).reduce((s, c) => s + Number(c.adiantamentos || 0), 0);
+    return { operacao: folha + cmv, foraOperacao: adiantamentos };
+  }, [comissoes, vendas]);
+
   const mesBounds = useMemo(() => {
     if (!selectedMes) return { start: undefined, end: undefined };
     const [ano, mesNum] = selectedMes.split('-').map(Number);
@@ -410,6 +420,26 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
             <MetricCard icon={<Users className="text-primary" />} label="Vendedores" value={String(totalVendedores)} />
             <MetricCard icon={<Award className="text-warning" />} label="Comissão Média" value={temFiltroAtivo ? '---' : formatCurrency(mediaComissao)} subtitle={temFiltroAtivo ? 'Disponível apenas no mensal' : (mediaComissao === 0 ? 'Execute o cálculo' : undefined)} />
           </div>
+          {/* Gastos */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <Card className="relative overflow-hidden fx-tile">
+              <div className="absolute left-0 top-0 right-0 h-[3px] bg-warning" />
+              <CardContent className="p-3 sm:p-6">
+                <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2"><TrendingDown size={15} className="text-warning" /> Gastos de Operação</p>
+                <p className="text-xl sm:text-2xl font-bold text-warning tabular-nums truncate">{formatCurrency(gastos.operacao)}</p>
+                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mt-1">folha + comissões + CMV</p>
+              </CardContent>
+            </Card>
+            <Card className="relative overflow-hidden fx-tile">
+              <div className="absolute left-0 top-0 right-0 h-[3px] bg-destructive/70" />
+              <CardContent className="p-3 sm:p-6">
+                <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2"><Wallet size={15} className="text-destructive/80" /> Outros Gastos <span className="text-muted-foreground/50 normal-case">(fora operação)</span></p>
+                <p className="text-xl sm:text-2xl font-bold text-destructive/80 tabular-nums truncate">{formatCurrency(gastos.foraOperacao)}</p>
+                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mt-1">adiantamentos</p>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* 1 gráfico: faturamento por loja */}
           {faturamentos.length > 0 && (
             <FaturamentoCrossLoja faturamentos={faturamentos} configs={allConfigs ?? {}} somenteGrafico />
@@ -420,7 +450,7 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="loja">Por Loja</TabsTrigger>
             <TabsTrigger value="equipe">Equipe</TabsTrigger>
-            <TabsTrigger value="colaborador">Colaborador</TabsTrigger>
+            <TabsTrigger value="colaborador">Por Colaborador</TabsTrigger>
             <TabsTrigger value="diarias">Diárias</TabsTrigger>
           </TabsList>
 

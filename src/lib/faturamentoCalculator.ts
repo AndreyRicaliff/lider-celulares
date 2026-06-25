@@ -29,6 +29,13 @@ export interface FaturamentoEspelho {
 
 const DRIFT_LIMITE = 0.02;
 
+// Default por loja: o "Total bruto" do Tenfront já inclui juros?
+// Calibrado empiricamente contra o dashboard (jun/2026). Overridável pelo banco
+// (configuracoes.config.bruto_inclui_juros). Lojas sem evidência → false.
+const BRUTO_INCLUI_JUROS_DEFAULT: Record<string, boolean> = {
+  natal: true,
+};
+
 export function calcFaturamentoEspelho(
   f: FaturamentoLoja,
   cal: FaturamentoCalibracao,
@@ -52,7 +59,12 @@ export function calcFaturamentoEspelho(
 export const calibracaoDesatualizada = (esp: FaturamentoEspelho): boolean =>
   esp.divergencia !== null && Math.abs(esp.divergencia) > DRIFT_LIMITE;
 
-export const lerCalibracao = (config: Record<string, number>): FaturamentoCalibracao => ({
-  brutoIncluiJuros: Boolean(config.bruto_inclui_juros),
+export const lerCalibracao = (
+  config: Record<string, number>,
+  lojaId: string,
+): FaturamentoCalibracao => ({
+  brutoIncluiJuros: config.bruto_inclui_juros !== undefined
+    ? Boolean(config.bruto_inclui_juros)
+    : (BRUTO_INCLUI_JUROS_DEFAULT[lojaId] ?? false),
   tenfrontRef: config.faturamento_tenfront_ref ?? null,
 });

@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/appStore';
 import { useVendasDiarias } from '@/hooks/useVendasDiarias';
 import { LOJAS } from '@/lib/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SelecioneLoja } from '@/components/SelecioneLoja';
 
 const STANDARD_CATEGORIES = [
   'GERAL',
@@ -173,11 +174,7 @@ export const VendasDiariaPage = () => {
   }, [dataInicio, dataFim]);
 
   if (!selectedLoja) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Selecione uma loja no menu lateral.</p>
-      </div>
-    );
+    return <SelecioneLoja tela="Vendas Diárias" />;
   }
 
   return (

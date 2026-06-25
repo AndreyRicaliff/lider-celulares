@@ -47,13 +47,13 @@ export const FaturamentoCards = ({ faturamentos, configs, effectiveLoja, titulo 
       </Card>
 
       <Card className="relative overflow-hidden fx-tile">
-        <div className="absolute left-0 top-0 right-0 h-[3px] bg-warning" />
+        <div className="absolute left-0 top-0 right-0 h-[3px] bg-primary/60" />
         <button type="button" onClick={() => setOpen(true)} className="w-full text-left">
           <CardContent className="p-3 sm:p-6">
             <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
-              <Receipt size={15} className="text-warning" /> Faturamento <span className="text-muted-foreground/50 normal-case">(≈ Tenfront)</span>
+              <Receipt size={15} className="text-primary" /> Faturamento <span className="text-muted-foreground/50 normal-case">(≈ Tenfront)</span>
             </p>
-            <p className="text-xl sm:text-2xl font-bold text-warning tabular-nums truncate">{formatCurrency(total.espelho)}</p>
+            <p className="text-xl sm:text-2xl font-bold text-primary tabular-nums truncate">{formatCurrency(total.espelho)}</p>
             <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mt-1 flex items-center gap-1">
               líquido + juros + trocas <ChevronDown size={11} />
             </p>

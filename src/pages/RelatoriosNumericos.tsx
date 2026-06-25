@@ -680,7 +680,7 @@ export const RelatoriosNumericos = () => {
                     <Download size={18} className="mr-2" />
                     Baixar PDF
                   </Button>
-                  <Button onClick={gerarExcel} variant="outline" className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white">
+                  <Button onClick={gerarExcel} variant="outline" className="border-green-600 text-green-600 hover:bg-green-600 hover:text-foreground">
                     <FileSpreadsheet size={18} className="mr-2" />
                     Baixar Excel
                   </Button>

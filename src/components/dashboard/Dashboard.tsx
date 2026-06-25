@@ -530,9 +530,9 @@ export const Dashboard = ({ colaboradorLojaId }: DashboardProps = {}) => {
                 return (
                   <div key={item.nome} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-accent/50 transition-colors">
                     <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0 ${
-                      index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-black' :
-                      index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-black' :
-                      index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white' :
+                      index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-background' :
+                      index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-background' :
+                      index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-foreground' :
                       'bg-muted border border-border text-muted-foreground'
                     }`}>
                       {index + 1}

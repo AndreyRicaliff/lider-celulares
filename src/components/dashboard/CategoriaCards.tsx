@@ -41,12 +41,12 @@ const CategoriaCard = ({ label, valor, cor, icon }: CategoriaItem) => (
 
 export const CategoriaCards = ({ totais, juros, totalBruto }: Props) => {
   const itens: CategoriaItem[] = [
-    { label: 'Smartphones', valor: totais.smartphones, cor: 'border-l-blue-500', icon: <Smartphone className="text-blue-500" size={18} /> },
-    { label: 'Acessórios', valor: totais.acessorios, cor: 'border-l-green-500', icon: <ShoppingBag className="text-green-500" size={18} /> },
-    { label: 'Cases', valor: totais.cases, cor: 'border-l-pink-500', icon: <ShoppingBag className="text-pink-500" size={18} /> },
-    { label: 'Película', valor: totais.pelicula, cor: 'border-l-orange-500', icon: <div className="w-[18px] h-[18px] rounded bg-orange-500/20 flex items-center justify-center text-orange-500 text-xs font-bold">P</div> },
-    { label: 'Serviços', valor: totais.servicos, cor: 'border-l-purple-500', icon: <Shield className="text-purple-500" size={18} /> },
-    { label: 'Geral', valor: totais.geral, cor: 'border-l-slate-500', icon: <ShoppingBag className="text-slate-500" size={18} /> },
+    { label: 'Smartphones', valor: totais.smartphones, cor: 'border-l-primary', icon: <Smartphone className="text-primary" size={18} /> },
+    { label: 'Acessórios', valor: totais.acessorios, cor: 'border-l-emerald-500/70', icon: <ShoppingBag className="text-emerald-400" size={18} /> },
+    { label: 'Cases', valor: totais.cases, cor: 'border-l-teal-500/70', icon: <ShoppingBag className="text-teal-400" size={18} /> },
+    { label: 'Película', valor: totais.pelicula, cor: 'border-l-cyan-500/70', icon: <div className="w-[18px] h-[18px] rounded bg-cyan-500/15 flex items-center justify-center text-cyan-400 text-xs font-bold">P</div> },
+    { label: 'Serviços', valor: totais.servicos, cor: 'border-l-lime-500/70', icon: <Shield className="text-lime-400" size={18} /> },
+    { label: 'Geral', valor: totais.geral, cor: 'border-l-muted-foreground/40', icon: <ShoppingBag className="text-muted-foreground" size={18} /> },
   ];
 
   return (

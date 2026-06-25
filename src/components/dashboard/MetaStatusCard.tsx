@@ -37,7 +37,7 @@ export const MetaStatusCard = ({
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full">
-              <Trophy className="text-black" size={28} />
+              <Trophy className="text-background" size={28} />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ export const MetaStatusCard = ({
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full">
-              <Medal className="text-black" size={28} />
+              <Medal className="text-background" size={28} />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">

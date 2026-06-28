@@ -9,11 +9,11 @@ export interface FaturamentoLoja {
   juros: number;
   faturamento_extra: number;
   total_bruto: number;
+  custo: number;
   atendimentos: number;
 }
 
 export interface FaturamentoCalibracao {
-  brutoIncluiJuros: boolean;
   tenfrontRef?: number | null;
 }
 
@@ -29,21 +29,14 @@ export interface FaturamentoEspelho {
 
 const DRIFT_LIMITE = 0.02;
 
-// Default por loja: o "Total bruto" do Tenfront já inclui juros?
-// Calibrado empiricamente contra o dashboard (jun/2026). Overridável pelo banco
-// (configuracoes.config.bruto_inclui_juros). Lojas sem evidência → false.
-const BRUTO_INCLUI_JUROS_DEFAULT: Record<string, boolean> = {
-  natal: true,
-  monteiro: true,
-  soledade: true,
-  // campina-grande e caruaru: Total bruto NÃO inclui juros → false (default)
-};
-
 export function calcFaturamentoEspelho(
   f: FaturamentoLoja,
   cal: FaturamentoCalibracao,
 ): FaturamentoEspelho {
-  const espelho = f.total_bruto + (cal.brutoIncluiJuros ? 0 : f.juros);
+  // Faturamento = "Total faturado" do relatório Tenfront = Σ Total bruto (já inclui juros
+  // de parcelamento e o seminovo negativo). Validado centavo-a-centavo em Campina/jun 2026.
+  // NÃO somar juros aqui: o total_bruto já os contém — somar de novo era a causa do overshoot.
+  const espelho = f.total_bruto;
   const ajusteErp = espelho - (f.liquido + f.juros + f.faturamento_extra);
   const divergencia = cal.tenfrontRef
     ? (espelho - cal.tenfrontRef) / cal.tenfrontRef
@@ -80,10 +73,6 @@ export const somarEspelhos = (itens: FaturamentoEspelho[]): FaturamentoEspelho =
 
 export const lerCalibracao = (
   config: Record<string, number>,
-  lojaId: string,
 ): FaturamentoCalibracao => ({
-  brutoIncluiJuros: config.bruto_inclui_juros !== undefined
-    ? Boolean(config.bruto_inclui_juros)
-    : (BRUTO_INCLUI_JUROS_DEFAULT[lojaId] ?? false),
   tenfrontRef: config.faturamento_tenfront_ref ?? null,
 });

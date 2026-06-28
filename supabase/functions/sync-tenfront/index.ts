@@ -21,6 +21,9 @@ Deno.serve(async (req) => {
     const dryRun = Boolean(body.dryRun);
     const force = Boolean(body.force);
     const fullYear = Boolean(body.fullYear);
+    // fullFetch: busca completa do mês pedido (sem ID-stop) p/ habilitar a conciliação
+    // anti-fantasma no mês atual, que o fullYear (Jan→mês-1) não cobre.
+    const fullFetch = Boolean(body.fullFetch);
     const mes = getRequestedMonth(req, body);
     const onlyLojaId = typeof body.loja_id === 'string' ? body.loja_id : null;
     const onlyLojaIds = Array.isArray(body.loja_ids) ? (body.loja_ids as string[]) : null;
@@ -181,9 +184,9 @@ Deno.serve(async (req) => {
         continue;
       }
       try {
-        // force só bypassa o guard de intervalo — NÃO força full fetch (forceFullFetch fica false)
-        // para que lastSyncDate seja sempre usado e o early-stop funcione nos ciclos incrementais
-        const result = await syncLoja(internalClient, loja, mes, dryRun, false, sharedSaldo);
+        // force só bypassa o guard de intervalo. fullFetch (opt-in) força busca completa do
+        // mês p/ rodar a conciliação anti-fantasma; sem ele, ciclo incremental com ID-stop.
+        const result = await syncLoja(internalClient, loja, mes, dryRun, fullFetch, sharedSaldo);
         results.push(result);
       } catch (err) {
         const msg = getErrorMessage(err);

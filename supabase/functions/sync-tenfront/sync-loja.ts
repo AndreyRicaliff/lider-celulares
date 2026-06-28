@@ -3,7 +3,7 @@ import { safeParseNumber, normalize, parseDate } from './utils.ts';
 import { unmappedGroups, unmappedProducts, celularesDebug } from './categorization.ts';
 import { checkPriceAlert } from './price-audit.ts';
 import { checkSaldo, fetchAllAtendimentos } from './tenfront-api.ts';
-import { getLastSyncDate, getLastSyncedAtendimentoId } from './db.ts';
+import { getLastSyncDate, getLastSyncedAtendimentoId, reconcileAudit } from './db.ts';
 import { mapAtendimentoToVenda } from './map-venda.ts';
 import type { LojaConfig, MappedVenda } from './types.ts';
 
@@ -146,6 +146,16 @@ export const syncLoja = async (
 
     if (auditRows.length > 0) {
       await internalClient.from('atendimentos_audit').upsert(auditRows, { onConflict: 'atendimento_id' });
+    }
+
+    // Conciliação anti-fantasma: só em fetch completo e íntegro do mês (full-year sync).
+    // auditRows = conjunto vivo do mês → o que estiver no banco fora dele é fantasma.
+    if (forceFullFetch && !wasPartial) {
+      const liveIds = auditRows.map((r) => r.atendimento_id);
+      const removidos = await reconcileAudit(internalClient, loja.id, mes, liveIds);
+      if (removidos.length > 0) {
+        console.log(`[${loja.id}] Conciliação ${mes}: ${removidos.length} fantasma(s) removido(s): ${removidos.join(', ')}`);
+      }
     }
   }
 
@@ -369,7 +379,7 @@ export const syncLoja = async (
   // Reaproveita o audit já buscado (auditRows2). Componentes: líquido (base de comissão),
   // juros (acréscimo de parcelamento), faturamento_extra (GAR/troca revendida: Total bruto>0
   // sem item de Venda) e total_bruto (campo cru). O espelho é montado no app por loja.
-  let fatLiquido = 0, fatJuros = 0, fatExtra = 0, fatTotalBruto = 0, fatAtend = 0;
+  let fatLiquido = 0, fatJuros = 0, fatExtra = 0, fatTotalBruto = 0, fatAtend = 0, fatCusto = 0;
   for (const r of auditRows2) {
     const st = (r.status || '').toLowerCase();
     if (st.includes('cancel') || st.includes('exclu')) continue;
@@ -378,21 +388,25 @@ export const syncLoja = async (
       if (j > 0) fatJuros += j;
     }
     const tb = safeParseNumber(r.valor_total);
-    if (tb < 0) continue; // compra de seminovo: abatida do lucro, fora do faturamento
+    fatTotalBruto += tb; // faturamento = relatório "Total faturado" = Σ Total bruto (inclui seminovo negativo)
     fatAtend++;
-    fatTotalBruto += tb;
-    let liq = 0;
+    if (tb < 0) continue; // compra de seminovo: entra no faturamento mas não tem base de comissão
+    let liq = 0, cus = 0;
     for (const info of r.detalhes_brutos ?? []) {
-      for (const v of [...(info.Venda ?? []), ...(info.Brinde ?? [])]) liq += safeParseNumber(v['Valor de venda'] || v.Valor || 0);
+      for (const v of [...(info.Venda ?? []), ...(info.Brinde ?? [])]) {
+        liq += safeParseNumber(v['Valor de venda'] || v.Valor || 0);
+        cus += safeParseNumber(v.Custo || 0);
+      }
       for (const t of info.Troca ?? []) liq += safeParseNumber(t['Valor de venda'] || t.Valor || 0);
     }
     fatLiquido += liq;
+    fatCusto += cus; // CMV = Σ Custo dos itens (= "Resultado por produto" do Tenfront)
     if (liq === 0 && tb > 0) fatExtra += tb; // GAR com pagamento / troca revendida sem item de Venda
   }
   await internalClient.from('faturamento_loja').upsert({
     loja_id: loja.id, mes,
     liquido: fatLiquido, juros: fatJuros, faturamento_extra: fatExtra,
-    total_bruto: fatTotalBruto, atendimentos: fatAtend, updated_at: new Date().toISOString(),
+    total_bruto: fatTotalBruto, custo: fatCusto, atendimentos: fatAtend, updated_at: new Date().toISOString(),
   }, { onConflict: 'loja_id,mes' });
 
   const semColaborador = vendasPayload.filter((v) => !v.colaborador_id).map((v) => v.vendedor_nome);

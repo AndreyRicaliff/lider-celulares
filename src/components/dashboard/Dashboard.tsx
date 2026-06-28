@@ -21,6 +21,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { LOJAS, LOJAS_IDS, isIgnoredColumn } from '@/lib/constants';
 import { useFaturamento } from '@/hooks/useFaturamento';
 import { FaturamentoCards } from './FaturamentoCards';
+import { MargemPanel } from './MargemPanel';
 import { FaturamentoCrossLoja } from './FaturamentoCrossLoja';
 import { CategoriaCards } from './CategoriaCards';
 import { RankingColaboradores } from './RankingColaboradores';
@@ -391,6 +392,11 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
               </CardContent>
             </Card>
           </div>
+
+          {/* Margem por loja + consolidado (Camada 1 — 100% da API, cravado) */}
+          {faturamentos.length > 0 && (
+            <MargemPanel faturamentos={faturamentos} effectiveLoja={effectiveLoja} />
+          )}
 
           {/* 1 gráfico: faturamento por loja */}
           {faturamentos.length > 0 && (

@@ -22,7 +22,7 @@ export const FaturamentoCards = ({ faturamentos, configs, effectiveLoja, titulo 
 
   const total = useMemo(() => {
     const porLoja = faturamentos.map((f) =>
-      calcFaturamentoEspelho(f, lerCalibracao(configs[f.loja_id]?.numericConfig ?? {}, f.loja_id)),
+      calcFaturamentoEspelho(f, lerCalibracao(configs[f.loja_id]?.numericConfig ?? {})),
     );
     const escopo = effectiveLoja
       ? faturamentos
@@ -55,7 +55,7 @@ export const FaturamentoCards = ({ faturamentos, configs, effectiveLoja, titulo 
             </p>
             <p className="text-xl sm:text-2xl font-bold text-primary tabular-nums truncate">{formatCurrency(total.espelho)}</p>
             <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mt-1 flex items-center gap-1">
-              líquido + juros + trocas <ChevronDown size={11} />
+              = Total faturado <ChevronDown size={11} />
             </p>
           </CardContent>
         </button>

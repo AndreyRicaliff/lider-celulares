@@ -26,7 +26,7 @@ export const FaturamentoCrossLoja = ({ faturamentos, configs, somenteGrafico = f
       faturamentos
         .map((f) => ({
           id: f.loja_id,
-          esp: calcFaturamentoEspelho(f, lerCalibracao(configs[f.loja_id]?.numericConfig ?? {}, f.loja_id)),
+          esp: calcFaturamentoEspelho(f, lerCalibracao(configs[f.loja_id]?.numericConfig ?? {})),
         }))
         .sort((a, b) => b.esp.espelho - a.esp.espelho),
     [faturamentos, configs],

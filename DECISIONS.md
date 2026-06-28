@@ -8,6 +8,22 @@ Registro de decisões técnicas datadas, em primeira pessoa. Material de defesa 
 
 ---
 
+## 2026-06-25 — [faturamento] Base própria reproduzível + conciliação anti-fantasma
+
+**Problema:** O faturamento do app errava sempre "por mais" vs o Tenfront, e não dava pra calibrar porque o Tenfront tem 4+ números de faturamento divergentes pro mesmo mês (dashboard ~147k, relatório "Total faturado" 133.056,76, "Resultado por produto" 127.075,14, DRE "Vendas" 143.528,21).
+
+**Investigação (Campina/jun 2026, do nosso próprio banco):** Reproduzi 2 relatórios do Tenfront centavo-a-centavo: faturamento = `Σ Total bruto` dos concluídos (incl. seminovo negativo) = 133.056,76; receita/lucro = `Σ Valor de venda` dos itens (s/ seminovo) = 127.075,14. Achei 2 causas do overshoot: (1) o `calcFaturamentoEspelho` somava juros que o `Total bruto` já contém; (2) o `atendimentos_audit` só faz upsert → atendimentos cancelados no Tenfront viravam fantasmas (Campina tinha 1 de R$700, ATE-VJE9SYD). A DRE completa não sai da API de vendas — `Compras`, `Despesas administrativas`, `Taxas` são lançamentos manuais do módulo financeiro.
+
+**Decisão:** (a) Faturamento = `total_bruto` direto (= relatório); aposentei a calibração `bruto_inclui_juros` por loja. (b) `total_bruto` passa a incluir o seminovo negativo. (c) Regra de conciliação (`reconcileAudit`): no full-year sync (completo, `!wasPartial`), deletar do audit os atendimentos fora da API viva, com trava de conjunto-vazio.
+
+**Por quê:** Ancorar no número auditável e reproduzível (relatório), não no instável (dashboard). A conciliação só dispara em fetch íntegro — um retorno degradado nunca apaga dado bom.
+
+**Consequências:** App passa a bater o Tenfront por loja (pipeline já é por-loja → vale pras 5). Dívida: a DRE completa precisa de um módulo de despesas manuais (aluguel/contador/compras de estoque). Deploy do edge + verificação dependem do reset de cota da API (00:00 BRT).
+
+**Como explicar em entrevista (30s):** "O ERP tinha 4 números de faturamento divergentes. Em vez de calibrar contra o instável, reproduzi o relatório auditável do meu próprio banco, centavo-a-centavo, e isolei duas causas de erro: juros somados em dobro e cache acumulando registros cancelados. Criei uma conciliação que só apaga quando a fonte veio íntegra — segura por construção."
+
+---
+
 ## 2026-05 — [diagnóstico] Entregar diagnóstico formal antes de implementar (Fase 1 → Fase 2) **[reconstruído]**
 
 **Problema:** O cliente tinha uma integração instável que "travava por tempo indeterminado". A pressão era ir direto para o fix. A causa raiz ainda era desconhecida.

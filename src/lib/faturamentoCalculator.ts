@@ -76,3 +76,48 @@ export const lerCalibracao = (
 ): FaturamentoCalibracao => ({
   tenfrontRef: config.faturamento_tenfront_ref ?? null,
 });
+
+// ── DRE (Demonstrativo de Resultado) — só campos confiáveis item-a-item da API ──
+// Receita = Σ preço de venda (líquido) · CMV = Σ custo · juros = Σ acréscimo do Pagamento.
+// Ignora total_bruto/ajusteErp (espelho de ERP inconsistente — não auditável).
+export interface DRE {
+  receita: number;            // Receita Bruta de Vendas
+  cmv: number;                // Custo das Mercadorias Vendidas
+  lucroBruto: number;         // receita − CMV
+  margemBruta: number;        // lucroBruto ÷ receita
+  receitaFinanceira: number;  // juros de parcelamento
+  outrasEntradas: number;     // GAR / troca revendida (sem CMV)
+  resultado: number;          // lucroBruto + receita financeira + outras
+  margemResultado: number;    // resultado ÷ receita
+}
+
+export function calcDRE(f: FaturamentoLoja): DRE {
+  const receita = f.liquido;
+  const cmv = f.custo;
+  const lucroBruto = receita - cmv;
+  const resultado = lucroBruto + f.juros + f.faturamento_extra;
+  return {
+    receita,
+    cmv,
+    lucroBruto,
+    margemBruta: receita ? lucroBruto / receita : 0,
+    receitaFinanceira: f.juros,
+    outrasEntradas: f.faturamento_extra,
+    resultado,
+    margemResultado: receita ? resultado / receita : 0,
+  };
+}
+
+const zeroFat: FaturamentoLoja = {
+  loja_id: '', mes: '', liquido: 0, juros: 0, faturamento_extra: 0,
+  total_bruto: 0, custo: 0, atendimentos: 0,
+};
+
+export const somarDRE = (fs: FaturamentoLoja[]): DRE =>
+  calcDRE(fs.reduce((a, f) => ({
+    ...a,
+    liquido: a.liquido + f.liquido,
+    custo: a.custo + f.custo,
+    juros: a.juros + f.juros,
+    faturamento_extra: a.faturamento_extra + f.faturamento_extra,
+  }), zeroFat));

@@ -446,3 +446,60 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Como explicar em entrevista (30s):** "O cliente queria reproduzir o faturamento do ERP. Validei contra 3 lojas e provei que não existe fórmula única — o ERP inclui juros no 'Total bruto' de uma loja e não de outra. Em vez de chutar, fiz calibração por loja guardada no banco, com um guard de divergência que alerta se o ERP mudar, e isolei tudo do cálculo de comissão. O número auditável (líquido) continua sendo a base de comissão; o espelho é secundário e honesto sobre o resíduo."
 
 **Fonte:** sessão 2026-06-25 com Ricalfiff (validação com dashboards de Natal/Campina/Caruaru + regras oficiais do cliente).
+
+---
+
+## 2026-06-28 — [faturamento] Verificação: frente "espelho Tenfront" concluída (registro de 25/06 estava desatualizado)
+
+**Contexto:** retomada após migração de máquina (secrets restaurados via tarball cifrado). O registro de 25/06 listava como PENDENTE: migration em prod, deploy da edge `sync-tenfront` e UI (cards peso igual + drill-down + cross-loja).
+
+**Verificado contra prod** (conta `sbcli`, projeto `ibpcexyrxwmknrfwifyy`):
+- **Schema:** `faturamento_loja` existe com todas as colunas + `custo` — migrations `20260625130000` + `20260626160000` já aplicadas via query direta.
+- **Dados:** `faturamento_loja` populada — 19 linhas, 5 lojas, meses mar→jun/2026 (edge produzindo).
+- **Edge:** `sync-tenfront` deployada `v44`, status ACTIVE.
+- **UI:** `Dashboard.tsx` usa `FaturamentoCards` (que abre `FaturamentoDrilldown` como pop-up filho) e `FaturamentoCrossLoja`. Sem stub/TODO. `bun run build` verde.
+
+**Conclusão:** frente concluída em código + prod. O "PENDENTE" de 25/06 foi fechado nas sessões de 26/06+ sem atualizar este registro.
+
+**Em aberto (dependência externa, não código):** calibração de **Soledade e Monteiro** — ainda sem número de referência do dashboard Tenfront; ambas no default `bruto_inclui_juros=false`. Confirmar quando o BPO passar o dashboard dessas lojas e ajustar `configuracoes.config` se divergir.
+
+**Nota de processo (importante):** o histórico de migrations está em **drift total** (0 de 61 registradas como remote). **`db push` é proibido neste projeto** — ele tentaria reaplicar tudo do zero e quebraria. Aplicar DDL via `db query --linked` (ou query direta) e **conferir o schema real** com `information_schema`; nunca confiar no `migration list` aqui.
+
+**Como explicar em entrevista (30s):** "Ao retomar o projeto, em vez de confiar no `migration list` — que mostrava tudo como não-aplicado por causa de drift no histórico — fui no schema real do banco de produção e confirmei tabela, colunas, dados e a edge deployada. Provei que a feature já estava entregue e só o registro de decisão tinha ficado para trás."
+
+**Fonte:** sessão 2026-06-28 com Ricalfiff (verificação pós-migração, frente A).
+
+---
+
+## 2026-06-28 — [faturamento] Monteiro custo=0 era agregação velha, não chave inválida
+
+**Problema:** `faturamento_loja.custo = 0` para Monteiro em todos os meses; suspeita de chave Tenfront inválida.
+
+**Investigação:** o JSON cru no `atendimentos_audit` do Monteiro **tem o campo `Custo` em 100% dos itens** (jun: 161 itens, ΣCusto ≈ R$ 38k). Logo o Tenfront manda o custo — a chave funciona (líquido e atendimentos também estavam populados). As outras 4 lojas tinham custo; só Monteiro 0.
+
+**Causa raiz:** o último sync do Monteiro (06-26) gravou o `custo` agregado como 0 — rodou antes da lógica de custo entrar na edge (as outras lojas foram sincronizadas depois). Não era credencial.
+
+**Decisão:** recomputar `custo` direto do `atendimentos_audit` (fórmula oficial: exclui cancelados e `valor_total<0`, soma `Custo` de Venda+Brinde), via `UPDATE ... FROM` derivado — **zero cota Tenfront**. Valores: mar 40.395 · abr 95.990 · mai 53.075 · jun 36.911. O próximo sync mantém (a edge já calcula custo).
+
+**Como explicar em entrevista (30s):** "Antes de pedir credencial nova, fui no dado cru no banco e provei que o ERP já mandava o custo — o zero era um valor velho de um sync antigo. Recomputei do próprio audit, sem gastar cota de API."
+
+**Fonte:** sessão 2026-06-28 com Ricalfiff.
+
+---
+
+## 2026-06-28 — [faturamento] DRE por loja sobre dados confiáveis da API (não o espelho do ERP)
+
+**Problema:** o `custo` estava na `faturamento_loja` mas nenhuma tela mostrava lucro/margem de forma completa; o que existia (`MargemPanel`) usava `Faturamento = Σ total_bruto`, que espelha o "Total faturado" do ERP — inconsistente entre telas (inclui juros numa loja e não em outra, abate seminovo negativo).
+
+**Decisão:** construir o DRE só sobre campos **item-a-item auditáveis** da API:
+- `calcDRE`/`somarDRE` em `faturamentoCalculator.ts`: Receita = `liquido` (Σ preço de venda) · CMV = `custo` (Σ custo) · Lucro Bruto = Receita − CMV · Margem Bruta = LB/Receita · Receita Financeira = `juros` (Σ acréscimo do Pagamento) · Outras = `faturamento_extra` (GAR/troca) · **Resultado** = LB + Juros + Outras.
+- `MargemPanel` reescrito como DRE (colunas Receita/CMV/Lucro Bruto/Margem/+Juros/+GAR-Troca/Resultado, por loja + consolidado).
+- **`total_bruto`/`ajusteErp` ficam de fora** do DRE (não auditáveis).
+
+**Por quê:** `liquido` e `custo` reconciliam item a item; `total_bruto` é um espelho de ERP inconsistente. Para análise financeira, base auditável > paridade com um número que o próprio ERP calcula de forma instável. Juros entram como **receita financeira separada** (separação receita operacional × financeira). Comissão/folha **não** entram — não vêm da API; ficam para uma camada de resultado operacional futura.
+
+**Verificado:** `tsc --noEmit` limpo, `bun run build` verde, e os 5 DREs de jun/2026 conferidos contra o banco (Natal margem 41,3% · Soledade 43,0% · Monteiro 37,8% após o fix de custo).
+
+**Como explicar em entrevista (30s):** "Montei o DRE sobre o que reconcilia item a item — preço de venda e custo do produto — e tratei juros como receita financeira separada, em vez de espelhar o 'total faturado' do ERP, que diverge entre as telas dele. Base auditável vale mais que paridade com um número instável."
+
+**Fonte:** sessão 2026-06-28 com Ricalfiff ("construção financeira completa usando apenas dados confiáveis das APIs").

@@ -5,6 +5,7 @@ import { useConfiguracao } from '@/hooks/useConfiguracoes';
 import { useSupervisores, useAtualizarParcelasDividas } from '@/hooks/useColaboradores';
 import { formatCurrency } from '@/lib/formatters';
 import { calcularFolhaSupervisor, SUPERVISORES_CONFIG, SupervisorResult } from '@/lib/supervisorCalculator';
+import { useSupervisorConfigs } from '@/hooks/useSupervisorConfig';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,7 @@ import { toast } from 'sonner';
 export const SupervisaoFolhaPage = () => {
   const { selectedMes, setSelectedMes } = useAppStore();
   const atualizarParcelas = useAtualizarParcelasDividas();
+  const { data: supOverrides = {} } = useSupervisorConfigs();
   
   // Buscar vendas de todas as lojas
   const { data: vendasSoledade = [] } = useVendas('soledade', selectedMes);
@@ -61,14 +63,14 @@ export const SupervisaoFolhaPage = () => {
       const dividas = supervisor?.dividas || [];
       
       // Usar loja_id diretamente das dívidas (já implementado no supervisorCalculator)
-      const resultado = calcularFolhaSupervisor(nome, vendasPorLoja, configsPorLoja, dividas, selectedMes);
+      const resultado = calcularFolhaSupervisor(nome, vendasPorLoja, configsPorLoja, dividas, selectedMes, [], supOverrides[nome] ?? {});
       if (resultado) {
         resultados.push(resultado);
       }
     });
     
     return resultados;
-  }, [vendasPorLoja, configsPorLoja, supervisores, selectedMes]);
+  }, [vendasPorLoja, configsPorLoja, supervisores, selectedMes, supOverrides]);
   
   const totalGeralSupervisores = supervisoresResultados.reduce((t, s) => t + s.totalGeral, 0);
   

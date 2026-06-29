@@ -582,3 +582,17 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Como explicar (30s):** "Troquei o faturamento-espelho do ERP, que era inconsistente, pela nossa própria soma item-a-item de tudo que entra. É um valor derivado e auditável — provei que bate com cada registro puxado da API."
 
 **Fonte:** sessão 2026-06-29 com Ricalfiff.
+
+---
+
+## 2026-06-29 — [supervisor] Config do supervisor editável (salário/comissões/bônus)
+
+**Problema:** `SUPERVISORES_CONFIG` (salário, ajuda, % serviço, bônus, taxa adm) era hardcoded — o cliente pediu poder editar o próprio salário/config.
+
+**Decisão (híbrido default-preserving):** tabela `supervisor_config` (nome PK, config JSONB, RLS admin) guarda **overrides**; `calcularFolhaSupervisor` faz `{ ...hardcoded, ...override }`. Vazio = hardcoded (idêntico). Card "Config dos Supervisores" na Config admin edita os escalares (salário base/mínimo, ajuda, % serviço loja/própria, bônus meta/super, taxa adm). Lojas de rateio/ajuda seguem o padrão.
+
+**Wiring:** `SupervisaoFolhaPage` e `RelatoriosNumericos` buscam `useSupervisorConfigs` e passam o override ao cálculo. `tsc`+`build` verdes; tabela criada vazia → folha de supervisão inalterada (default-preserving).
+
+**Dívidas/contas fora do ERP:** já cobertas pelo `DividasManager` existente (descrição, valor, parcelas, loja, mês início, histórico) — são manuais por natureza.
+
+**Fonte:** sessão 2026-06-29 com Ricalfiff (pedido do cliente via WhatsApp: editar salário/dívidas/contas fora da Tenfront).

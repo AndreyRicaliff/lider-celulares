@@ -13,6 +13,7 @@ import { Save, Settings, CalendarOff, RefreshCw, Copy } from 'lucide-react';
 import { DiasFechamentoSelector } from '@/components/configuracoes/DiasFechamentoSelector';
 import { ExclusoesCard } from '@/components/configuracoes/ExclusoesCard';
 import { GerenciarAcessosCard } from '@/components/configuracoes/GerenciarAcessosCard';
+import { SupervisorConfigCard } from '@/components/configuracoes/SupervisorConfigCard';
 import { VendedorBloqueiosManager } from '@/components/configuracoes/VendedorBloqueiosManager';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -489,6 +490,9 @@ export const ConfiguracoesPage = () => {
 
         {/* Gerenciamento de senhas de acesso (por loja) */}
         <GerenciarAcessosCard lojaId={lojaId} />
+
+        {/* Config editável dos supervisores (salário, comissões, bônus) */}
+        <SupervisorConfigCard />
       </div>
     </div>
     </ConfigFormContext.Provider>

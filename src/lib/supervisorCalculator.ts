@@ -176,10 +176,12 @@ export function calcularFolhaSupervisor(
   configsPorLoja: Record<string, Record<string, number>>,
   dividas: Divida[] = [],
   mes: string = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
-  _lojasDividasAplicadas: string[] = [] // Mantido para compatibilidade, mas não usado - usamos loja_id da dívida
+  _lojasDividasAplicadas: string[] = [], // Mantido para compatibilidade, mas não usado - usamos loja_id da dívida
+  override: Partial<SupervisorConfig> = {}, // Overrides editáveis (tabela supervisor_config); default = hardcoded
 ): SupervisorResult | null {
-  const supervisorConfig = SUPERVISORES_CONFIG[supervisorNome];
-  if (!supervisorConfig) return null;
+  const base = SUPERVISORES_CONFIG[supervisorNome];
+  if (!base) return null;
+  const supervisorConfig = { ...base, ...override };
   
   const LOJAS_NOMES: Record<string, string> = {
     'soledade': 'Soledade',

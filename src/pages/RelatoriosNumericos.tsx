@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { SUPERVISORES_CONFIG, calcularFolhaSupervisor } from '@/lib/supervisorCalculator';
 import { useAllConfiguracoes } from '@/hooks/useConfiguracoes';
 import { useSupervisores } from '@/hooks/useColaboradores';
+import { useSupervisorConfigs } from '@/hooks/useSupervisorConfig';
 import * as XLSX from 'xlsx';
 
 interface LojaResult {
@@ -76,6 +77,7 @@ export const RelatoriosNumericos = () => {
 
   const { data: allConfigs = {} } = useAllConfiguracoes(mes);
   const { data: supervisoresData = [] } = useSupervisores();
+  const { data: supOverrides = {} } = useSupervisorConfigs();
 
   // Calculate supervisor service commissions per loja
   const supervisorComissoes = useMemo(() => {
@@ -107,7 +109,7 @@ export const RelatoriosNumericos = () => {
       const dividas = supervisor?.dividas || [];
 
       // Usar a função oficial de cálculo
-      const folha = calcularFolhaSupervisor(nome, vendasPorLoja, configsPorLoja, dividas, mes);
+      const folha = calcularFolhaSupervisor(nome, vendasPorLoja, configsPorLoja, dividas, mes, [], supOverrides[nome] ?? {});
 
       if (folha) {
         folha.resultadosPorLoja.forEach(res => {
@@ -135,7 +137,7 @@ export const RelatoriosNumericos = () => {
     });
 
     return results;
-  }, [incluirSupervisao, allVendas, allConfigs, supervisoresData, selectedLojas, selectedVendedores, mes]);
+  }, [incluirSupervisao, allVendas, allConfigs, supervisoresData, selectedLojas, selectedVendedores, mes, supOverrides]);
 
   const allVendedores = useMemo(() => {
     const vends = new Set<string>();

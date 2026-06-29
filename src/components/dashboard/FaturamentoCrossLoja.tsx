@@ -7,7 +7,6 @@ import { LOJAS } from '@/lib/constants';
 import {
   calcFaturamentoEspelho,
   lerCalibracao,
-  calibracaoDesatualizada,
   type FaturamentoLoja,
 } from '@/lib/faturamentoCalculator';
 
@@ -40,7 +39,7 @@ export const FaturamentoCrossLoja = ({ faturamentos, configs, somenteGrafico = f
     <Card>
       <CardContent className="p-3 sm:p-4 space-y-4">
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Faturamento por loja (espelho Tenfront)</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Faturamento por loja (fórmula própria)</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -71,25 +70,18 @@ export const FaturamentoCrossLoja = ({ faturamentos, configs, somenteGrafico = f
               <TableHead className="text-right">Juros</TableHead>
               <TableHead className="text-right">Trocas/GAR</TableHead>
               <TableHead className="text-right">Faturamento</TableHead>
-              <TableHead className="text-right">Δ Tenfront</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {linhas.map(({ id, esp }) => {
-              const drift = calibracaoDesatualizada(esp);
-              return (
+            {linhas.map(({ id, esp }) => (
                 <TableRow key={id} className="fx-tile">
                   <TableCell className="font-medium">{nomeLoja(id)}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatCurrency(esp.liquido)}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">{formatCurrency(esp.juros)}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">{esp.extra > 0 ? formatCurrency(esp.extra) : '—'}</TableCell>
                   <TableCell className="text-right tabular-nums font-semibold text-primary">{formatCurrency(esp.espelho)}</TableCell>
-                  <TableCell className={`text-right tabular-nums ${esp.divergencia === null ? 'text-muted-foreground' : drift ? 'text-warning' : 'text-success'}`}>
-                    {esp.divergencia === null ? '—' : `${(esp.divergencia * 100).toFixed(2)}%`}
-                  </TableCell>
                 </TableRow>
-              );
-            })}
+            ))}
           </TableBody>
         </Table>
         )}

@@ -56,10 +56,10 @@ export const DREPage = () => {
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <Kpi icon={<TrendingUp size={14} className="text-primary" />} label="Receita" valor={formatCurrency(total.receita)} sub="Σ preço de venda" />
+            <Kpi icon={<TrendingUp size={14} className="text-primary" />} label="Faturamento" valor={formatCurrency(total.faturamento)} sub="líquido + juros + GAR/troca" />
+            <Kpi icon={<DollarSign size={14} className="text-primary" />} label="Receita (vendas)" valor={formatCurrency(total.receita)} sub="Σ preço de venda" />
             <Kpi icon={<DollarSign size={14} className="text-success" />} label="Lucro Bruto" valor={formatCurrency(total.lucroBruto)} sub={`margem ${formatPct(total.margemBruta)}`} />
-            <Kpi icon={<Percent size={14} className="text-primary" />} label="Receita Financ. (juros)" valor={formatCurrency(total.receitaFinanceira)} sub="parcelamento" />
-            <Kpi icon={<DollarSign size={14} className="text-success" />} label="Resultado Operacional" valor={formatCurrency(total.resultadoOperacional)} sub={`− folha · margem ${formatPct(total.margemOperacional)}`} />
+            <Kpi icon={<Percent size={14} className="text-success" />} label="Resultado Operacional" valor={formatCurrency(total.resultadoOperacional)} sub={`− folha · margem ${formatPct(total.margemOperacional)}`} />
           </div>
 
           <MargemPanel faturamentos={faturamentos} effectiveLoja={null} folhaPorLoja={folhaPorLoja} />

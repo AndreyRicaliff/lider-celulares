@@ -51,11 +51,11 @@ export const FaturamentoCards = ({ faturamentos, configs, effectiveLoja, titulo 
         <button type="button" onClick={() => setOpen(true)} className="w-full text-left">
           <CardContent className="p-3 sm:p-6">
             <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
-              <Receipt size={15} className="text-primary" /> Faturamento <span className="text-muted-foreground/50 normal-case">(≈ Tenfront)</span>
+              <Receipt size={15} className="text-primary" /> Faturamento
             </p>
             <p className="text-xl sm:text-2xl font-bold text-primary tabular-nums truncate">{formatCurrency(total.espelho)}</p>
             <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mt-1 flex items-center gap-1">
-              = Total faturado <ChevronDown size={11} />
+              Líquido + Juros + GAR/Troca <ChevronDown size={11} />
             </p>
           </CardContent>
         </button>

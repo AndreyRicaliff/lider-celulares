@@ -568,3 +568,17 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Como explicar em entrevista (30s):** "Tornei as regras de invalidação editáveis sem arriscar o histórico: mantive o legado imutável e o cálculo passou a ler a união com uma tabela que o gestor gerencia. Provei que com a tabela vazia o resultado é idêntico — mudança aditiva e segura."
 
 **Fonte:** sessão 2026-06-29 com Ricalfiff.
+
+---
+
+## 2026-06-29 — [faturamento] Faturamento = fórmula própria (abandona o espelho do ERP)
+
+**Decisão (reverte 2026-06-25):** o "Faturamento" deixa de espelhar o "Total faturado" do ERP. Passa a ser a **fórmula própria** = `líquido + juros + GAR/troca` (tudo que entra), **derivada** dos componentes item-a-item — um dos únicos valores **não puxados direto da API**. Removido `ajusteErp`/`total_bruto`/calibração `tenfront_ref` da UI (Cards, Drilldown, CrossLoja) e do `calcFaturamentoEspelho`; o DRE ganhou KPI `faturamento`.
+
+**Por quê:** o `total_bruto` do ERP é inconsistente entre telas do Tenfront (inclui juros numa loja e não em outra; abate seminovo negativo). Perseguir paridade vira manutenção eterna. A fórmula própria é auditável e bate com cada registro.
+
+**Acurácia garantida:** reconciliação recomputando `líquido` e `juros` do JSON cru de cada atendimento (`atendimentos_audit`) = **exatamente** os valores armazenados, nas 5 lojas (jun/2026). Seminovo negativo (compra) deixa de distorcer — não é entrada.
+
+**Como explicar (30s):** "Troquei o faturamento-espelho do ERP, que era inconsistente, pela nossa própria soma item-a-item de tudo que entra. É um valor derivado e auditável — provei que bate com cada registro puxado da API."
+
+**Fonte:** sessão 2026-06-29 com Ricalfiff.

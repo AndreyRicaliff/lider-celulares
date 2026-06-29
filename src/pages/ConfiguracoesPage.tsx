@@ -234,11 +234,13 @@ export const ConfiguracoesPage = () => {
                 <ConfigInput id="loja_bonus_meta_prata" label="Bônus Meta Prata (R$)" step="10" />
                 <ConfigInput id="loja_meta_ouro" label="Meta Ouro da Loja (R$)" step="1000" />
                 <ConfigInput id="loja_bonus_meta_ouro" label="Bônus Meta Ouro (R$)" step="10" />
+                <ConfigInput id="vr_bonus_fixo" label="Bônus VR (fixo, R$)" step="10" />
               </>
             ) : (
               <>
                 <ConfigInput id="loja_meta_ouro" label="Meta Ouro da Loja (R$)" step="1000" />
                 <ConfigInput id="loja_bonus_meta_ouro" label="Bônus Meta Ouro (R$)" step="10" />
+                <ConfigInput id="vr_bonus_prata" label="Bônus VR Meta Prata (R$)" step="10" />
               </>
             )}
             <ConfigInput id="bonus_melhor_servico" label="Bônus Melhor Serviço (R$)" step="10" />
@@ -256,9 +258,7 @@ export const ConfiguracoesPage = () => {
             {isNatalLike && (
               <ConfigInput id="cases_comissao" label="% Cases" />
             )}
-            {lojaId !== 'monteiro' && (
-              <ConfigInput id="assistencia_tecnica_comissao" label="% Assistência Técnica" />
-            )}
+            <ConfigInput id="assistencia_tecnica_comissao" label="% Assistência Técnica" />
           </CardContent>
         </Card>
 
@@ -379,6 +379,9 @@ export const ConfiguracoesPage = () => {
                 <ConfigInput id="natal_pelicula_comissao_meta_batida" label="% Meta Batida" />
                 <ConfigInput id="natal_pelicula_comissao_meta_minima" label="% Meta Mínima" />
               </>
+            )}
+            {!isSoledadeMonteiro && (
+              <ConfigInput id="pelicula_penaliza_smartphone" label="Penaliza smartphone se < mínima (1=sim / 0=não)" />
             )}
           </CardContent>
         </Card>

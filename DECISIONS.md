@@ -529,3 +529,24 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Nota:** vendas/custo/juros são item-a-item da API (auditável); folha vem do cálculo de comissões (regra interna) — distinção sinalizada no rodapé do painel. Verificado: `tsc`+`build` verdes; Result. Op. de jun conferido por loja (Natal 40,4% · Caruaru 37,1% · Monteiro 32,6%).
 
 **Fonte:** sessão 2026-06-29 com Ricalfiff ("os dois": resultado operacional + automação).
+
+---
+
+## 2026-06-29 — [comissão] Regras hardcoded viram config editável (gestor edita limites/metas/%)
+
+**Problema:** auditoria do motor vs o PDF de regras (valores são exemplo; importam regras/cálculos) achou 4 regras **hardcoded** no código, não editáveis pelo gestor: (1) Monteiro sem assist. técnica (`if (!isMonteiro)`); (2) penalidade de película que zera smartphone fixa em 3 lojas; (3) Monteiro bônus prata = 0 hardcoded; (4) VR 200 fixo / VR 300 prata hardcoded.
+
+**Decisão:** parametrizar as 4 na `configuracoes` (JSONB, sem migration), **default = comportamento atual**:
+- assist. técnica: guard por `config.assistencia_tecnica_comissao` (Monteiro sem o campo = 0); input liberado pra todas as lojas.
+- `pelicula_penaliza_smartphone` (0/1, default 1) por loja → toggle.
+- bônus prata: usar `config.loja_bonus_meta_prata ?? 200` (Monteiro já tem 0 em prod) → remove hardcode.
+- `vr_bonus_fixo` (?? 200) / `vr_bonus_prata` (?? 300) → campos.
+- Defaults semeados explicitamente na config de prod (pro input mostrar valor real, não 0 enganoso).
+
+**Verificação (A/B na mesma data):** recalc jun com código antigo vs novo — 4 lojas **byte-idênticas**; Monteiro **+R$5,18**, que é uma **correção**: o supervisor LUIZ (`loja_id ≠ monteiro`) caía no `!isMonteiro`=true e multiplicava por `config.assistencia_tecnica_comissao` ausente → `valor*(undefined/100)`=NaN → `Number.isFinite` zerava a comissão inteira dele. O guard por config eliminou o NaN. `tsc`+`build` verdes.
+
+**Em aberto:** (a) recalcular mar–abr–mai com o código novo restablece (corrige) comissões de supervisores por centavos — decisão de negócio (restatement). (b) VR-prata no código só aplica a Campina; PDF cita Natal/Caruaru também — gap conhecido, não alterado.
+
+**Como explicar em entrevista (30s):** "Transformei regras hardcoded em configuração editável sem mudar nenhum resultado (provei com A/B na mesma base). No caminho, a parametrização eliminou um NaN latente que zerava a comissão de supervisores que atuam em loja sem aquele campo."
+
+**Fonte:** sessão 2026-06-29 com Ricalfiff (modelo de permissão (a): admin/gestor edita).

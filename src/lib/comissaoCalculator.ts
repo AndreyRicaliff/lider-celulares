@@ -26,7 +26,6 @@ export function calcularComissaoSoledadeMonteiro(
   const info = { atingiuFase3Servico: false };
   const proporcional = (colaborador.proporcional_meta || 100) / 100;
   const isTrainee = colaborador.cargo === 'Trainee';
-  const isMonteiro = colaborador.loja_id === 'monteiro';
 
   // Geral
   comissoes.GERAL = safeGet(totais, 'GERAL') * (config.geral_comissao / 100);
@@ -58,8 +57,8 @@ export function calcularComissaoSoledadeMonteiro(
     }
   }
 
-  // Assistência Técnica (apenas Soledade)
-  if (!isMonteiro) {
+  // Assistência Técnica — % configurável por loja (sem o campo na config = não paga)
+  if (config.assistencia_tecnica_comissao) {
     comissoes['ASSIST. TÉCNICA'] = safeGet(totais, 'ASSISTÊNCIA TÉCNICA') * (config.assistencia_tecnica_comissao / 100);
   }
 
@@ -146,8 +145,7 @@ export function calcularBonusMetaLojaSoledadeMonteiro(
   if (totalSemGeralSemServicos >= config.loja_meta_ouro) {
     return config.loja_bonus_meta_ouro || 300;
   } else if (totalSemGeral >= config.loja_meta_prata) {
-    if (lojaId === 'monteiro') return 0;
-    return config.loja_bonus_meta_prata || 200;
+    return config.loja_bonus_meta_prata ?? 200;
   }
   return 0;
 }
@@ -290,11 +288,12 @@ export function calcularComissaoCampinaNatal(
   comissoes['PROTEÇÃO LÍDER'] = valorPL * (taxaServicos / 100);
   comissoes['GARANTIA ESTENDIDA'] = valorGE * (taxaServicos / 100);
 
-  if (info.penalidadePelicula && !isTrainee) {
+  // Penalidade de smartphone quando película abaixo da mínima — configurável por loja.
+  // Default (campo ausente) = 1 → penaliza, preservando o comportamento atual.
+  if (info.penalidadePelicula && !isTrainee && (config.pelicula_penaliza_smartphone ?? 1)) {
     comissoes['BONIFICADO LC'] = 0;
     comissoes['SUPER BONIFICADO'] = 0;
     comissoes['SMARTPHONES E FILMES'] = 0;
-    comissoes.PELÍCULA = 0;
   }
 
   return {

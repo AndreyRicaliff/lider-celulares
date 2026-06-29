@@ -203,8 +203,9 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
       let bonusAutomatico = 0;
       const bonusInfo: Array<{ descricao: string; valor: number }> = [];
       if (colaborador.cargo === 'VR' && (lojaId === 'soledade' || lojaId === 'monteiro')) {
-        bonusAutomatico += 200;
-        bonusInfo.push({ descricao: 'Bônus de Função (VR)', valor: 200 });
+        const vrFixo = (configToUse as Record<string, number>).vr_bonus_fixo ?? 200;
+        bonusAutomatico += vrFixo;
+        bonusInfo.push({ descricao: 'Bônus de Função (VR)', valor: vrFixo });
       }
 
       comissoes.push({
@@ -310,10 +311,11 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
       const batiuMetaOuro = valorSmartphones >= metaOuro;
 
       if (lojaId === 'campina-grande' && batiuMetaPrata) {
+        const vrPrata = (configToUse as Record<string, number>).vr_bonus_prata ?? 300;
         comissoes.forEach((c: any) => {
           if (c.cargo === 'VR') {
-            c.bonus_automatico += 300;
-            (c.detalhes as any).bonusInfo = [...((c.detalhes as any).bonusInfo || []), { descricao: 'Bônus VR Meta Prata', valor: 300 }];
+            c.bonus_automatico += vrPrata;
+            (c.detalhes as any).bonusInfo = [...((c.detalhes as any).bonusInfo || []), { descricao: 'Bônus VR Meta Prata', valor: vrPrata }];
           }
         });
       }

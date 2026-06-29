@@ -9,6 +9,7 @@ import { calcDRE, somarDRE, type DRE, type FaturamentoLoja } from '@/lib/faturam
 interface Props {
   faturamentos: FaturamentoLoja[];
   effectiveLoja: string | null;
+  folhaPorLoja?: Record<string, number>;
 }
 
 interface Linha extends DRE {
@@ -30,21 +31,23 @@ const ColunasDRE = ({ d }: { d: DRE }) => (
     <Celula className="text-foreground/90">{formatCurrency(d.receita)}</Celula>
     <Celula className="text-muted-foreground">{formatCurrency(d.cmv)}</Celula>
     <Celula className={corLucro(d.lucroBruto)}>{formatCurrency(d.lucroBruto)}</Celula>
-    <Celula className={cn('font-semibold', corLucro(d.lucroBruto))}>{formatPct(d.margemBruta)}</Celula>
+    <Celula className={cn('font-medium', corLucro(d.lucroBruto))}>{formatPct(d.margemBruta)}</Celula>
     <Celula className="text-muted-foreground">{formatCurrency(d.receitaFinanceira)}</Celula>
-    <Celula className="text-muted-foreground">{d.outrasEntradas > 0 ? formatCurrency(d.outrasEntradas) : '—'}</Celula>
-    <Celula className={cn('font-semibold', corLucro(d.resultado))}>{formatCurrency(d.resultado)}</Celula>
+    <Celula className="text-muted-foreground">{formatCurrency(d.folha)}</Celula>
+    <Celula className={cn('font-semibold', corLucro(d.resultadoOperacional))}>{formatCurrency(d.resultadoOperacional)}</Celula>
+    <Celula className={cn('font-semibold', corLucro(d.resultadoOperacional))}>{formatPct(d.margemOperacional)}</Celula>
   </>
 );
 
-export const MargemPanel = ({ faturamentos, effectiveLoja }: Props) => {
+export const MargemPanel = ({ faturamentos, effectiveLoja, folhaPorLoja = {} }: Props) => {
   const { linhas, total } = useMemo(() => {
     const escopo = effectiveLoja ? faturamentos.filter((f) => f.loja_id === effectiveLoja) : faturamentos;
     const ls: Linha[] = escopo
-      .map((f) => ({ id: f.loja_id, nome: LOJAS[f.loja_id as keyof typeof LOJAS] ?? f.loja_id, ...calcDRE(f) }))
-      .sort((a, b) => b.resultado - a.resultado);
-    return { linhas: ls, total: somarDRE(escopo) };
-  }, [faturamentos, effectiveLoja]);
+      .map((f) => ({ id: f.loja_id, nome: LOJAS[f.loja_id as keyof typeof LOJAS] ?? f.loja_id, ...calcDRE(f, folhaPorLoja[f.loja_id] ?? 0) }))
+      .sort((a, b) => b.resultadoOperacional - a.resultadoOperacional);
+    const folhaTotal = escopo.reduce((s, f) => s + (folhaPorLoja[f.loja_id] ?? 0), 0);
+    return { linhas: ls, total: somarDRE(escopo, folhaTotal) };
+  }, [faturamentos, effectiveLoja, folhaPorLoja]);
 
   return (
     <Card className="relative overflow-hidden fx-tile">
@@ -63,8 +66,9 @@ export const MargemPanel = ({ faturamentos, effectiveLoja }: Props) => {
                 <th className="px-3 py-2 text-right font-medium">Lucro bruto</th>
                 <th className="px-3 py-2 text-right font-medium">Margem</th>
                 <th className="px-3 py-2 text-right font-medium">+ Juros</th>
-                <th className="px-3 py-2 text-right font-medium">+ GAR/Troca</th>
-                <th className="px-3 py-2 text-right font-medium">Resultado</th>
+                <th className="px-3 py-2 text-right font-medium">− Folha</th>
+                <th className="px-3 py-2 text-right font-medium">Result. Op.</th>
+                <th className="px-3 py-2 text-right font-medium">Margem Op.</th>
               </tr>
             </thead>
             <tbody>
@@ -84,7 +88,7 @@ export const MargemPanel = ({ faturamentos, effectiveLoja }: Props) => {
           </table>
         </div>
         <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mt-2">
-          Receita = Σ preço de venda · CMV = Σ custo · Lucro bruto = Receita − CMV · Juros = receita financeira (parcelamento) · Resultado = Lucro bruto + Juros + GAR/Troca. Tudo item-a-item da API; o "Total faturado" do ERP fica fora por divergir entre telas.
+          Receita = Σ preço de venda · CMV = Σ custo · Lucro bruto = Receita − CMV · Folha = comissão + salário + ajuda de custo · Result. Op. = Lucro bruto + Juros + GAR/Troca − Folha. Vendas/custo/juros vêm item-a-item da API; folha vem do cálculo de comissões.
         </p>
       </CardContent>
     </Card>

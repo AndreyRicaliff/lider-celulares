@@ -318,6 +318,17 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
     return { operacao: folha + cmv, foraOperacao: adiantamentos };
   }, [comissoes, vendas]);
 
+  // Folha (comissão + salário + ajuda de custo) por loja — alimenta o Resultado Operacional do DRE.
+  const folhaPorLoja = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const c of comissoes || []) {
+      acc[c.loja_id] = (acc[c.loja_id] || 0)
+        + Number(c.comissao_base || 0) + Number(c.bonus_automatico || 0)
+        + Number(c.bonus_manual || 0) + Number(c.salario || 0) + Number(c.ajuda_custo || 0);
+    }
+    return acc;
+  }, [comissoes]);
+
   const mesBounds = useMemo(() => {
     if (!selectedMes) return { start: undefined, end: undefined };
     const [ano, mesNum] = selectedMes.split('-').map(Number);
@@ -395,7 +406,7 @@ export const Dashboard = ({ colaboradorLojaId, variant = 'resumo' }: DashboardPr
 
           {/* Margem por loja + consolidado (Camada 1 — 100% da API, cravado) */}
           {faturamentos.length > 0 && (
-            <MargemPanel faturamentos={faturamentos} effectiveLoja={effectiveLoja} />
+            <MargemPanel faturamentos={faturamentos} effectiveLoja={effectiveLoja} folhaPorLoja={folhaPorLoja} />
           )}
 
           {/* 1 gráfico: faturamento por loja */}

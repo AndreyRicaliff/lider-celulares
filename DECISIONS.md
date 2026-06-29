@@ -503,3 +503,29 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Como explicar em entrevista (30s):** "Montei o DRE sobre o que reconcilia item a item — preço de venda e custo do produto — e tratei juros como receita financeira separada, em vez de espelhar o 'total faturado' do ERP, que diverge entre as telas dele. Base auditável vale mais que paridade com um número instável."
 
 **Fonte:** sessão 2026-06-28 com Ricalfiff ("construção financeira completa usando apenas dados confiáveis das APIs").
+
+---
+
+## 2026-06-29 — [comissão] Comissão é gated por config mensal; replicada p/ o ano (metas estáveis)
+
+**Problema:** comissões só refletiam maio no dashboard. Investigação provou que **vendas estão sincronizadas até junho** (cron a cada 30min), mas o motor de comissão exige uma linha em `configuracoes` por `(loja, mês)` com as metas/% — e essa config **só existia para maio**. Sem config → `calculateCommissionsForLoja` retorna "config não encontrada".
+
+**Decisão:** com Ricalfiff confirmando que **as metas são estáveis mês a mês**, replicar a config de maio para mar/abr/jun (`INSERT…SELECT` idempotente) e recalcular o ano rodando a **lógica real do app headless** (bun + shim de `localStorage` + login admin, reusando `calculateCommissionsForLoja` — zero drift vs reimplementar em SQL/Deno).
+
+**Resultado:** mar 16 / abr 24 / mai 19 / jun 19 folhas. **Maio mudou de R$15.584 → R$30.613** porque o cálculo anterior (20/05) era de meio do mês; recalculado com o mês fechado.
+
+**Consequência/dívida:** comissão é **snapshot manual** — sem cron. O auto-cálculo do dashboard só dispara quando o mês está vazio, então junho vai defasar conforme novas vendas sincronizam. Pendente: automação de recálculo.
+
+**Como explicar em entrevista (30s):** "As comissões dependiam de uma config mensal que só existia para um mês. Em vez de reimplementar o cálculo em SQL e arriscar divergência, rodei a própria lógica do app de forma headless, com login de serviço, reusando o código que já é a fonte da verdade."
+
+**Fonte:** sessão 2026-06-29 com Ricalfiff.
+
+---
+
+## 2026-06-29 — [faturamento] Resultado Operacional no DRE (Lucro Bruto − Folha)
+
+**Decisão:** estender o DRE (`calcDRE(f, folha)`) e o `MargemPanel` com **Folha** (comissão + salário + ajuda de custo, por loja, vinda da tabela `comissoes`) e **Resultado Operacional = Lucro Bruto + Juros + GAR/Troca − Folha**, com margem operacional. `Dashboard` agrega `folhaPorLoja` das `comissoes` e passa ao painel.
+
+**Nota:** vendas/custo/juros são item-a-item da API (auditável); folha vem do cálculo de comissões (regra interna) — distinção sinalizada no rodapé do painel. Verificado: `tsc`+`build` verdes; Result. Op. de jun conferido por loja (Natal 40,4% · Caruaru 37,1% · Monteiro 32,6%).
+
+**Fonte:** sessão 2026-06-29 com Ricalfiff ("os dois": resultado operacional + automação).

@@ -81,21 +81,25 @@ export const lerCalibracao = (
 // Receita = Σ preço de venda (líquido) · CMV = Σ custo · juros = Σ acréscimo do Pagamento.
 // Ignora total_bruto/ajusteErp (espelho de ERP inconsistente — não auditável).
 export interface DRE {
-  receita: number;            // Receita Bruta de Vendas
-  cmv: number;                // Custo das Mercadorias Vendidas
-  lucroBruto: number;         // receita − CMV
-  margemBruta: number;        // lucroBruto ÷ receita
-  receitaFinanceira: number;  // juros de parcelamento
-  outrasEntradas: number;     // GAR / troca revendida (sem CMV)
-  resultado: number;          // lucroBruto + receita financeira + outras
-  margemResultado: number;    // resultado ÷ receita
+  receita: number;             // Receita Bruta de Vendas
+  cmv: number;                 // Custo das Mercadorias Vendidas
+  lucroBruto: number;          // receita − CMV
+  margemBruta: number;         // lucroBruto ÷ receita
+  receitaFinanceira: number;   // juros de parcelamento
+  outrasEntradas: number;      // GAR / troca revendida (sem CMV)
+  resultado: number;           // lucroBruto + receita financeira + outras
+  margemResultado: number;     // resultado ÷ receita
+  folha: number;               // comissão + salário + ajuda de custo (despesa de pessoal)
+  resultadoOperacional: number;// resultado − folha
+  margemOperacional: number;   // resultadoOperacional ÷ receita
 }
 
-export function calcDRE(f: FaturamentoLoja): DRE {
+export function calcDRE(f: FaturamentoLoja, folha = 0): DRE {
   const receita = f.liquido;
   const cmv = f.custo;
   const lucroBruto = receita - cmv;
   const resultado = lucroBruto + f.juros + f.faturamento_extra;
+  const resultadoOperacional = resultado - folha;
   return {
     receita,
     cmv,
@@ -105,6 +109,9 @@ export function calcDRE(f: FaturamentoLoja): DRE {
     outrasEntradas: f.faturamento_extra,
     resultado,
     margemResultado: receita ? resultado / receita : 0,
+    folha,
+    resultadoOperacional,
+    margemOperacional: receita ? resultadoOperacional / receita : 0,
   };
 }
 
@@ -113,11 +120,15 @@ const zeroFat: FaturamentoLoja = {
   total_bruto: 0, custo: 0, atendimentos: 0,
 };
 
-export const somarDRE = (fs: FaturamentoLoja[]): DRE =>
-  calcDRE(fs.reduce((a, f) => ({
+export const somarFaturamentos = (fs: FaturamentoLoja[]): FaturamentoLoja =>
+  fs.reduce((a, f) => ({
     ...a,
     liquido: a.liquido + f.liquido,
     custo: a.custo + f.custo,
     juros: a.juros + f.juros,
     faturamento_extra: a.faturamento_extra + f.faturamento_extra,
-  }), zeroFat));
+    total_bruto: a.total_bruto + f.total_bruto,
+  }), zeroFat);
+
+export const somarDRE = (fs: FaturamentoLoja[], folha = 0): DRE =>
+  calcDRE(somarFaturamentos(fs), folha);

@@ -15,6 +15,7 @@ import { SupervisaoFolhaPage } from '@/pages/SupervisaoFolhaPage';
 import { VendasDiariaPage } from '@/pages/VendasDiariaPage';
 import { VendasPage } from '@/pages/VendasPage';
 import { EstoquePage } from '@/pages/EstoquePage';
+import { DREPage } from '@/pages/DREPage';
 
 interface MainLayoutProps {
   children?: ReactNode;
@@ -43,6 +44,7 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
         case 'relatorio': return <RelatoriosPage />;
         case 'relatorios-numericos': return <RelatoriosNumericos />;
         case 'estoque': return <EstoquePage />;
+        case 'dre': return <DREPage />;
         default: return <Dashboard />;
       }
     }
@@ -81,6 +83,7 @@ export const MainLayout = ({ children, isColaborador, isGerente, isSupervisao, c
       case 'relatorios-numericos': return <RelatoriosNumericos />;
       case 'supervisao-folha': return <SupervisaoFolhaPage />;
       case 'estoque': return <EstoquePage />;
+      case 'dre': return <DREPage />;
       default: return <Dashboard />;
     }
   };

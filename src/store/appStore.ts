@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface AppState {
-  currentView: 'dashboard' | 'vendas' | 'colaboradores' | 'folha' | 'relatorio' | 'relatorios' | 'configuracoes' | 'supervisao-folha' | 'vendas-diarias' | 'relatorios-numericos' | 'estoque' | 'auditoria';
+  currentView: 'dashboard' | 'vendas' | 'colaboradores' | 'folha' | 'relatorio' | 'relatorios' | 'configuracoes' | 'supervisao-folha' | 'vendas-diarias' | 'relatorios-numericos' | 'estoque' | 'dre' | 'auditoria';
   selectedLoja: string | null;
   selectedMes: string;
   selectedVendedor: string | null;

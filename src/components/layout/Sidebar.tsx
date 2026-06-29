@@ -21,6 +21,7 @@ import {
   PanelLeftOpen,
   ChevronDown,
   ShoppingCart,
+  TrendingUp,
 } from 'lucide-react';
 import { LiderLogo } from './LiderLogo';
 
@@ -139,6 +140,9 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
               <NavGroup title="Operação">
                 <NavItem icon={<CalendarDays size={18} />} label="Vendas Diárias" active={currentView === 'vendas-diarias'} onClick={() => handleNavigation('vendas-diarias')} />
                 <NavItem icon={<Package size={18} />} label="Estoque Inteligente" active={currentView === 'estoque'} onClick={() => handleNavigation('estoque')} />
+              </NavGroup>
+              <NavGroup title="Financeiro">
+                <NavItem icon={<TrendingUp size={18} />} label="DRE" active={currentView === 'dre'} onClick={() => handleNavigation('dre')} />
               </NavGroup>
               <NavGroup title="Comissões">
                 <NavItem icon={<FileText size={18} />} label="Folha de Pagamento" active={currentView === 'folha'} onClick={() => handleNavigation('folha')} />

@@ -550,3 +550,21 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Como explicar em entrevista (30s):** "Transformei regras hardcoded em configuração editável sem mudar nenhum resultado (provei com A/B na mesma base). No caminho, a parametrização eliminou um NaN latente que zerava a comissão de supervisores que atuam em loja sem aquele campo."
 
 **Fonte:** sessão 2026-06-29 com Ricalfiff (modelo de permissão (a): admin/gestor edita).
+
+---
+
+## 2026-06-29 — [comissão] Exclusões gerenciáveis pelo gestor (híbrido: legado em código + DB)
+
+**Problema:** as regras de invalidação de comissão por (loja, mês, vendedor) — vendedor não comissiona, venda excluída, fora do serviço do supervisor, loja fora dos botons — eram **listas hardcoded em `constants.ts`**, não editáveis pelo gestor.
+
+**Decisão (híbrido, por segurança/dinheiro):** em vez de migrar as ~8 entradas legadas (risco no cálculo de meses fechados), manter o legado imutável em código e adicionar a tabela `exclusoes` (admin-write via RLS) que o gestor gerencia. O cálculo lê a **união** (constante legada OR DB). Default-preserving por construção: DB vazio = resultado idêntico.
+
+**Implementação:** tabela `exclusoes` (migration `20260629120000`); `batchCalculateCommissions` busca exclusões da loja/mês e faz OR com `isVendedorExcluido`/`isLojaExcluidaBotons`; hook `useExclusoes` + `ExclusoesCard` na `ConfiguracoesPage` (CRUD admin). Flag morto `penalidadeAcessorios` removido.
+
+**Verificado:** `tsc`+`build` verdes; recalc jun com DB vazio = idêntico (default-preserving); RLS testada (admin INSERT ✓ / DELETE 204).
+
+**Consequência/limitação:** as ~8 exclusões legadas (meses fechados de 2025/início 2026) seguem no código, não editáveis — intencional. As novas, 100% pelo gestor. Supervisor_servico no cálculo do supervisor (página) ainda lê só o legado — ampliar para o DB quando necessário.
+
+**Como explicar em entrevista (30s):** "Tornei as regras de invalidação editáveis sem arriscar o histórico: mantive o legado imutável e o cálculo passou a ler a união com uma tabela que o gestor gerencia. Provei que com a tabela vazia o resultado é idêntico — mudança aditiva e segura."
+
+**Fonte:** sessão 2026-06-29 com Ricalfiff.

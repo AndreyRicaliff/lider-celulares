@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Save, Settings, CalendarOff, RefreshCw, Copy } from 'lucide-react';
 import { DiasFechamentoSelector } from '@/components/configuracoes/DiasFechamentoSelector';
+import { ExclusoesCard } from '@/components/configuracoes/ExclusoesCard';
 import { VendedorBloqueiosManager } from '@/components/configuracoes/VendedorBloqueiosManager';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -481,6 +482,9 @@ export const ConfiguracoesPage = () => {
 
         {/* Bloqueio de Vendedores */}
         <VendedorBloqueiosManager />
+
+        {/* Exclusões de comissão (gerenciáveis pelo gestor) */}
+        <ExclusoesCard lojaId={lojaId} mes={selectedMes} />
       </div>
     </div>
     </ConfigFormContext.Provider>

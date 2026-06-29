@@ -139,9 +139,17 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
       if (normalized.length > 0) dividasAplicadasPorColaborador.set(c.colaborador_id, normalized);
     });
 
+    // Exclusões gerenciáveis pelo gestor (tabela exclusoes) — unidas às legadas de constants.
+    const { data: exclusoesDb } = await client.from('exclusoes').select('tipo, vendedor_nome').eq('loja_id', lojaId).eq('mes', mes);
+    const exVendedorSet = new Set((exclusoesDb ?? []).filter((e) => e.tipo === 'vendedor').map((e) => (e.vendedor_nome ?? '').toLowerCase().trim()));
+    const exBotonsLojaDb = (exclusoesDb ?? []).some((e) => e.tipo === 'botons_loja');
+
     // Map vendas to staged rows
     const allRows: StagedRow[] = vendas.map((v: any) => mapVendaToStagedRow(v));
-    const stagedDataParaCalculo = allRows.filter(row => !isVendedorExcluido(lojaId, mes, row.VENDEDOR.trim()));
+    const stagedDataParaCalculo = allRows.filter(row =>
+      !isVendedorExcluido(lojaId, mes, row.VENDEDOR.trim()) &&
+      !exVendedorSet.has(row.VENDEDOR.trim().toLowerCase())
+    );
 
     // Group by vendor
     const vendasPorVendedor: Record<string, Record<string, number>[]> = {};
@@ -417,7 +425,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
     if (insertError) throw insertError;
 
     // Update botons
-    const lojaExcluidaBotons = isLojaExcluidaBotons(lojaId, mes);
+    const lojaExcluidaBotons = isLojaExcluidaBotons(lojaId, mes) || exBotonsLojaDb;
     if (!lojaExcluidaBotons) {
       for (const comissao of comissoes) {
         if (comissao.cargo === 'Gerente' || comissao.cargo === 'Trainee' || !comissao.colaborador_id) continue;

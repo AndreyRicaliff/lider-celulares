@@ -1,0 +1,25 @@
+name: Recalcular comissões
+
+# Recalcula comissões do mês corrente (e anterior) reusando a lógica real do app.
+# Necessário: secret SUPABASE_SERVICE_ROLE_KEY no repositório.
+
+on:
+  schedule:
+    - cron: '30 2 * * *'   # 02:30 UTC = 23:30 BRT, diário (após o último sync do dia)
+  workflow_dispatch:        # permite rodar manualmente
+    inputs:
+      meses:
+        description: 'Meses (CSV, ex: 2026-05,2026-06). Vazio = corrente + anterior.'
+        required: false
+
+jobs:
+  recalc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run scripts/recalc-comissoes.ts
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MESES: ${{ github.event.inputs.meses }}

@@ -57,11 +57,11 @@ function mapVendaToStagedRow(venda: { vendedor_nome: string; detalhes: Record<st
   return row;
 }
 
-async function fetchColaboradoresForLoja(lojaId: string): Promise<ColaboradorComDividas[]> {
-  const { data: colaboradores, error } = await supabase.from('colaboradores').select('*').order('nome');
+async function fetchColaboradoresForLoja(lojaId: string, client: typeof supabase = supabase): Promise<ColaboradorComDividas[]> {
+  const { data: colaboradores, error } = await client.from('colaboradores').select('*').order('nome');
   if (error) throw error;
 
-  const { data: vinculos } = await supabase.from('colaborador_lojas').select('*');
+  const { data: vinculos } = await client.from('colaborador_lojas').select('*');
   const vinculosByColaborador = new Map<string, any[]>();
   (vinculos || []).forEach((v: any) => {
     const arr = vinculosByColaborador.get(v.colaborador_id) || [];
@@ -81,7 +81,7 @@ async function fetchColaboradoresForLoja(lojaId: string): Promise<ColaboradorCom
 
   return Promise.all(
     filtered.map(async (col: any) => {
-      const { data: dividas } = await supabase
+      const { data: dividas } = await client
         .from('dividas')
         .select('*')
         .eq('colaborador_id', col.id)
@@ -94,10 +94,10 @@ async function fetchColaboradoresForLoja(lojaId: string): Promise<ColaboradorCom
   );
 }
 
-export async function calculateCommissionsForLoja(lojaId: string, mes: string): Promise<{ count: number; error?: string }> {
+export async function calculateCommissionsForLoja(lojaId: string, mes: string, client: typeof supabase = supabase): Promise<{ count: number; error?: string }> {
   try {
     // Fetch vendas
-    const { data: vendas, error: vendasError } = await supabase
+    const { data: vendas, error: vendasError } = await client
       .from('vendas')
       .select('*')
       .eq('loja_id', lojaId)
@@ -106,7 +106,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string): 
     if (!vendas || vendas.length === 0) return { count: 0 };
 
     // Fetch config
-    const { data: configRow } = await supabase
+    const { data: configRow } = await client
       .from('configuracoes')
       .select('config')
       .eq('loja_id', lojaId)
@@ -120,12 +120,12 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string): 
     Object.entries(raw).forEach(([k, v]) => { if (typeof v === 'number') configToUse[k] = v; });
 
     // Fetch colaboradores with dívidas
-    const colaboradores = await fetchColaboradoresForLoja(lojaId);
+    const colaboradores = await fetchColaboradoresForLoja(lojaId, client);
     const colaboradoresCalculaveis = colaboradores.filter(c => c.cargo !== 'Gerente');
     const gerente = colaboradores.find(c => c.cargo === 'Gerente');
 
     // Fetch existing commissions to preserve debt tracking
-    const { data: comissoesSalvas } = await supabase
+    const { data: comissoesSalvas } = await client
       .from('comissoes')
       .select('colaborador_id, detalhes')
       .eq('loja_id', lojaId)
@@ -382,7 +382,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string): 
     if (comissoes.length === 0) return { count: 0 };
 
     // Save commissions preserving manually-edited values
-    const { data: existing } = await supabase
+    const { data: existing } = await client
       .from('comissoes')
       .select('vendedor_nome, bonus_manual, adiantamentos, descontos')
       .eq('loja_id', lojaId)
@@ -410,8 +410,8 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string): 
       return c;
     });
 
-    await supabase.from('comissoes').delete().eq('loja_id', lojaId).eq('mes', mes);
-    const { error: insertError } = await supabase.from('comissoes').insert(mergedComissoes);
+    await client.from('comissoes').delete().eq('loja_id', lojaId).eq('mes', mes);
+    const { error: insertError } = await client.from('comissoes').insert(mergedComissoes);
     if (insertError) throw insertError;
 
     // Update botons
@@ -437,9 +437,9 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string): 
         else if (metaServicos && metaSmartphones && metaPeliculas) { tipo = 'triplice_coroa'; pontos = 10; }
         else if (metaServicos) { tipo = 'protecao_lider'; pontos = 5; }
 
-        await supabase.from('botons').delete().eq('colaborador_id', comissao.colaborador_id).eq('mes', mes);
+        await client.from('botons').delete().eq('colaborador_id', comissao.colaborador_id).eq('mes', mes);
         if (tipo) {
-          await supabase.from('botons').insert({ colaborador_id: comissao.colaborador_id, loja_id: lojaId, mes, tipo, pontos });
+          await client.from('botons').insert({ colaborador_id: comissao.colaborador_id, loja_id: lojaId, mes, tipo, pontos });
         }
       }
     }

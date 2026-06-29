@@ -29,8 +29,10 @@ const { LOJAS_IDS } = await import('@/lib/constants');
 
 const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 const now = new Date();
-const meses = process.env.MESES?.split(',')
-  ?? [ym(new Date(now.getFullYear(), now.getMonth() - 1, 1)), ym(now)];
+const mesesEnv = process.env.MESES?.trim();
+const meses = mesesEnv
+  ? mesesEnv.split(',').map((s) => s.trim()).filter(Boolean)
+  : [ym(new Date(now.getFullYear(), now.getMonth() - 1, 1)), ym(now)];
 
 let falhas = 0;
 for (const mes of meses) {

@@ -8,7 +8,6 @@ export interface CalculoResult {
   info: {
     atingiuFase3Servico: boolean;
     penalidadePelicula?: boolean;
-    penalidadeAcessorios?: boolean;
   };
   comissaoDetalhada: Record<string, number>;
 }

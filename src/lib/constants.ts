@@ -5,9 +5,10 @@ export const LOJAS = {
   'natal': 'Natal',
   
   'caruaru': 'Caruaru',
+  'caruaru-2': 'Caruaru 2',
 } as const;
 
-export const LOJAS_IDS = ['soledade', 'monteiro', 'campina-grande', 'natal', 'caruaru'] as const;
+export const LOJAS_IDS = ['soledade', 'monteiro', 'campina-grande', 'natal', 'caruaru', 'caruaru-2'] as const;
 export type LojaId = typeof LOJAS_IDS[number];
 
 export const CARGOS = ['Gerente', 'Vendedor', 'VR', 'Trainee', 'Supervisor'] as const;

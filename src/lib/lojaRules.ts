@@ -3,11 +3,11 @@ export const isLojaSoledadeMonteiro = (lojaId?: string | null): boolean => {
 };
 
 export const isLojaNatalLike = (lojaId?: string | null): boolean => {
-  return lojaId === 'natal' || lojaId === 'caruaru';
+  return lojaId === 'natal' || lojaId === 'caruaru' || lojaId === 'caruaru-2';
 };
 
 export const isLojaCampinaNatal = (lojaId?: string | null): boolean => {
-  return lojaId === 'campina-grande' || lojaId === 'natal' || lojaId === 'caruaru';
+  return lojaId === 'campina-grande' || lojaId === 'natal' || lojaId === 'caruaru' || lojaId === 'caruaru-2';
 };
 
 export const isLojaMonteiro = (lojaId?: string | null): boolean => {

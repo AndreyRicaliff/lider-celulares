@@ -356,8 +356,8 @@ export const ColaboradoresPage = () => {
       setLoginDialogOpen(false);
       setSelectedColaboradorForLogin(null);
       setIsUpdatingPassword(false);
-    } catch (error: any) {
-      const errorMessage = error.message || 'Erro ao processar';
+    } catch (error: unknown) {
+      const errorMessage = (error instanceof Error ? error.message : '') || 'Erro ao processar';
       if (errorMessage.includes('already been registered') || errorMessage.includes('email_exists')) {
         toast.error('Este usuário já existe no sistema');
       } else {
@@ -393,8 +393,8 @@ export const ColaboradoresPage = () => {
       toast.success('Supervisão atualizada com sucesso!');
       setEditSupervisorDialogOpen(false);
       setSelectedSupervisor(null);
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao atualizar');
+    } catch (error: unknown) {
+      toast.error((error instanceof Error ? error.message : '') || 'Erro ao atualizar');
     } finally {
       setUpdatingSupervisor(false);
     }
@@ -408,8 +408,8 @@ export const ColaboradoresPage = () => {
           await deleteUser(sup.user_id);
           toast.success('Supervisão excluída com sucesso!');
           fetchSupervisores();
-        } catch (error: any) {
-          toast.error(error.message || 'Erro ao excluir');
+        } catch (error: unknown) {
+          toast.error((error instanceof Error ? error.message : '') || 'Erro ao excluir');
         }
       },
       { title: 'Excluir supervisão', confirmLabel: 'Excluir', destructive: true }
@@ -481,8 +481,8 @@ export const ColaboradoresPage = () => {
                 .update({ acesso_gerente })
                 .eq('id', result.id);
               toast.success('Colaborador e login criados com sucesso!');
-            } catch (loginError: any) {
-              const errorMessage = loginError.message || '';
+            } catch (loginError: unknown) {
+              const errorMessage = loginError instanceof Error ? loginError.message : '';
               if (errorMessage.includes('already been registered') || errorMessage.includes('email_exists')) {
                 toast.error('Colaborador criado, mas este usuário já possui login cadastrado');
               } else {
@@ -494,9 +494,9 @@ export const ColaboradoresPage = () => {
       }
       setDialogOpen(false);
       resetForm();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.message || 'Erro ao salvar colaborador');
+      toast.error((error instanceof Error ? error.message : '') || 'Erro ao salvar colaborador');
     }
   };
 

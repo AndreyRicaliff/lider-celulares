@@ -639,3 +639,12 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Por quê:** dado e UI já existiam e casam com o formato atual; reaproveitar > reconstruir. Periodização já vem do seletor de mês global (`selectedMes`).
 **Consequências:** religado em MainLayout (admin+supervisão) e Sidebar (grupo "Auditoria"). Monteiro aparece congelado em 26/06 até a chave ser corrigida — então o "reprocessar" da página passa a refletir a correção.
 **Como explicar em entrevista (30s):** "Em vez de reconstruir, recuperei do histórico git uma página que já lia a tabela de auditoria crua; validei que o formato do JSON (`detalhes_brutos`) ainda batia e religuei no roteamento por estado (Zustand `currentView`), com build e typecheck verdes."
+
+## 2026-06-30 — [lojas] Caruaru 2 (loja secundária) + toggle "Agrupar Caruaru"
+
+**Problema:** o shopping de Caruaru cobra taxa sobre faturamento acima de um teto; pra não estourar, as vendas são divididas em 2 lojas (caruaru + caruaru-2). São uma operação só, partida contabilmente.
+**Opções consideradas:** (A) agrupar via seam global `getLojaIdsForQuery` (usado por 7 hooks); (B) loja separada + agrupamento opt-in local à auditoria.
+**Decisão:** (B). caruaru-2 é loja **separada** (entra em LOJAS/LOJAS_IDS, região PE=RN_PE, regras de comissão = caruaru via lojaRules). O **toggle "Agrupar Caruaru"** vive só na auditoria (query `.in([caruaru, caruaru-2])`), via `components/auditoria/grupos.ts`.
+**Por quê:** mexer no seam global fundiria as duas lojas em TODO o app (vendas, comissões, DRE) — o oposto de "separada com toggle". Local é cirúrgico e reversível.
+**Consequências:** caruaru-2 aparece como 6ª loja em todos os filtros/telas. PENDENTE (financeiro, não toquei): linha em `configuracoes` p/ comissão calcular; avaliar inclusão em `LOJAS_SUPERVISAO`; vincular vendedores (ALMIR/LUIZ/FELIPE) a caruaru-2. Teto: Ricaliff envia depois (vira alerta).
+**Como explicar em entrevista (30s):** "Modelei a loja-espelho como entidade separada e fiz o agrupamento opt-in e local à feature, em vez de no seam global de query — assim não contamino os cálculos financeiros das outras telas."

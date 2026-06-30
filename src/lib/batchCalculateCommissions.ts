@@ -20,6 +20,36 @@ import {
   calcularBonusMetaLojaSoledadeMonteiro,
 } from '@/lib/comissaoCalculator';
 
+interface BonusInfo { descricao: string; valor: number }
+
+interface ComissaoDetalhes {
+  totais?: Record<string, number>;
+  info?: Record<string, unknown>;
+  bonusInfo?: BonusInfo[];
+  dividasInfo?: unknown[];
+  vendedorId?: string;
+}
+
+interface ComissaoRow {
+  loja_id: string;
+  colaborador_id: string;
+  vendedor_nome: string;
+  cargo: string;
+  mes: string;
+  salario: number;
+  ajuda_custo: number;
+  comissao_base: number;
+  comissao_detalhada: Json;
+  repostagem_venda: number;
+  repostagem_comissao: number;
+  bonus_automatico: number;
+  bonus_manual: number;
+  descontos_dividas: number;
+  adiantamentos: number;
+  descontos: number;
+  detalhes: Json;
+}
+
 const STANDARD_CATEGORY_HEADERS = [
   'VENDEDOR',
   'BONIFICADO LC',
@@ -163,7 +193,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
       vendasPorVendedor[nome].push(detalhes);
     });
 
-    const comissoes: any[] = [];
+    const comissoes: ComissaoRow[] = [];
     let totalGeralVendasLoja = 0;
 
     for (const colaborador of colaboradoresCalculaveis) {
@@ -231,7 +261,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
     // Best service bonus
     if (configToUse.bonus_melhor_servico > 0) {
       const elegiveisServico = comissoes.filter(c => {
-        const det = c.detalhes as any;
+        const det = c.detalhes as ComissaoDetalhes;
         return det?.info?.atingiuFase3Servico && c.cargo !== 'Trainee';
       });
       if (elegiveisServico.length > 0) {
@@ -244,7 +274,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
         if (vencedor) {
           const bonusServico = configToUse.bonus_melhor_servico;
           vencedor.bonus_automatico += bonusServico;
-          (vencedor.detalhes as any).bonusInfo = [...((vencedor.detalhes as any).bonusInfo || []), { descricao: 'Melhor Vendedor Serviço', valor: bonusServico }];
+          (vencedor.detalhes as ComissaoDetalhes).bonusInfo = [...((vencedor.detalhes as ComissaoDetalhes).bonusInfo || []), { descricao: 'Melhor Vendedor Serviço', valor: bonusServico }];
         }
       }
     }
@@ -280,7 +310,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
         const vencedorSm = comissoes.find((c: any) => c.vendedor_nome === elegiveisSmartphone[0].vendedor_nome);
         if (vencedorSm) {
           vencedorSm.bonus_automatico += bonusMelhorSmartphone;
-          (vencedorSm.detalhes as any).bonusInfo = [...((vencedorSm.detalhes as any).bonusInfo || []), { descricao: 'Melhor Vendedor Smartphone', valor: bonusMelhorSmartphone }];
+          (vencedorSm.detalhes as ComissaoDetalhes).bonusInfo = [...((vencedorSm.detalhes as ComissaoDetalhes).bonusInfo || []), { descricao: 'Melhor Vendedor Smartphone', valor: bonusMelhorSmartphone }];
         }
       }
     }
@@ -303,7 +333,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
         comissoes.forEach((c: any) => {
           if (['Vendedor', 'VR', 'Trainee'].includes(c.cargo)) {
             c.bonus_automatico += bonusMetaLoja;
-            (c.detalhes as any).bonusInfo = [...((c.detalhes as any).bonusInfo || []), { descricao: `Bônus Meta ${tipoMeta}`, valor: bonusMetaLoja }];
+            (c.detalhes as ComissaoDetalhes).bonusInfo = [...((c.detalhes as ComissaoDetalhes).bonusInfo || []), { descricao: `Bônus Meta ${tipoMeta}`, valor: bonusMetaLoja }];
           }
         });
       }
@@ -323,7 +353,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
         comissoes.forEach((c: any) => {
           if (c.cargo === 'VR') {
             c.bonus_automatico += vrPrata;
-            (c.detalhes as any).bonusInfo = [...((c.detalhes as any).bonusInfo || []), { descricao: 'Bônus VR Meta Prata', valor: vrPrata }];
+            (c.detalhes as ComissaoDetalhes).bonusInfo = [...((c.detalhes as ComissaoDetalhes).bonusInfo || []), { descricao: 'Bônus VR Meta Prata', valor: vrPrata }];
           }
         });
       }
@@ -335,7 +365,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
             const bonusValor = bonusValorBase * (percentualAjuste / 100);
             c.bonus_automatico += bonusValor;
             const desc = percentualAjuste < 100 ? `Bônus Meta Ouro (${percentualAjuste}% proporcional)` : 'Bônus Meta Ouro';
-            (c.detalhes as any).bonusInfo = [...((c.detalhes as any).bonusInfo || []), { descricao: desc, valor: bonusValor }];
+            (c.detalhes as ComissaoDetalhes).bonusInfo = [...((c.detalhes as ComissaoDetalhes).bonusInfo || []), { descricao: desc, valor: bonusValor }];
           }
         });
       }
@@ -429,7 +459,7 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
     if (!lojaExcluidaBotons) {
       for (const comissao of comissoes) {
         if (comissao.cargo === 'Gerente' || comissao.cargo === 'Trainee' || !comissao.colaborador_id) continue;
-        const totais = (comissao.detalhes as any)?.totais || {};
+        const totais = (comissao.detalhes as ComissaoDetalhes)?.totais || {};
         const col = colaboradoresCalculaveis.find(c => c.id === comissao.colaborador_id);
         const proporcional = (col?.proporcional_meta || 100) / 100;
         const configRecord = configToUse as Record<string, number>;
@@ -455,8 +485,8 @@ export async function calculateCommissionsForLoja(lojaId: string, mes: string, c
     }
 
     return { count: comissoes.length };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[batchCalc] ${lojaId}/${mes}:`, error);
-    return { count: 0, error: error?.message || 'unknown error' };
+    return { count: 0, error: error instanceof Error ? error.message : 'unknown error' };
   }
 }

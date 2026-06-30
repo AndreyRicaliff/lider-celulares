@@ -51,7 +51,7 @@ export const AuthPage = ({ onLogin }: AuthPageProps) => {
 
       toast.success('Login realizado com sucesso!');
       onLogin();
-    } catch (error: any) {
+    } catch {
       toast.error('Erro ao fazer login');
     } finally {
       setLoading(false);

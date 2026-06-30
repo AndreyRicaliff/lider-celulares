@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ShoppingCart,
   TrendingUp,
+  FileSearch,
 } from 'lucide-react';
 import { LiderLogo } from './LiderLogo';
 
@@ -149,6 +150,9 @@ export const Sidebar = ({ isColaborador, isGerente, isSupervisao, colaboradorLoj
                 <NavItem icon={<Briefcase size={18} />} label="Supervisão — Folha" active={currentView === 'supervisao-folha'} onClick={() => handleNavigation('supervisao-folha')} />
                 <NavItem icon={<BarChart3 size={18} />} label="Relatórios" active={currentView === 'relatorio'} onClick={() => handleNavigation('relatorio')} />
                 <NavItem icon={<Hash size={18} />} label="Relatórios Numéricos" active={currentView === 'relatorios-numericos'} onClick={() => handleNavigation('relatorios-numericos')} />
+              </NavGroup>
+              <NavGroup title="Auditoria">
+                <NavItem icon={<FileSearch size={18} />} label="Dados Crus (API)" active={currentView === 'auditoria'} onClick={() => handleNavigation('auditoria')} />
               </NavGroup>
               {isAdmin && (
                 <NavGroup title="Gestão">

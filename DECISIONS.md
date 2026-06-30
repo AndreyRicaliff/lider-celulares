@@ -612,3 +612,21 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Pendente:** reprocessar demais lojas/meses + assistência técnica de itens com `Grupo` vazio (ex.: FRONTAL/tela) precisa de keyword/lançamento manual.
 
 **Fonte:** sessão 2026-06-29 com Ricalfiff (divergência reportada pelo cliente via WhatsApp).
+
+## 2026-06-29 — [categorização] Grupo do ERP como fonte da verdade + modo remapOnly
+
+**Problema:** o split BONIFICADO LC vs SUPER BONIFICADO divergia do coletor do cliente (ex.: REALME C85 com Grupo=SUPER caía em BLC). Causa: `classifySmartphone` decidia por nome/preço, sobrescrevendo o campo `Grupo` do ERP.
+
+**Discovery (docs/DISCOVERY_GRUPOS.md):** o ERP usa `CELULARES` genérico em mar–mai (split depende de heurística) e migrou para `BONIFICADO`/`SUPER BONIFICADO`/`ANATEL` explícitos em jun. Grupos variam por loja (`PELICULAS`/`PELÍCULAS`, `CAIXAS JBL`, `ANATEL`, `∅`+PEÇA DE MANUTENÇÃO).
+
+**Decisão:**
+1. `mapGrupoToCategory` passa a ser **grupo-first**: grupo específico do ERP decide direto; `classifySmartphone` (nome/preço) só para `CELULARES` genérico e itens sem grupo.
+2. `Grupo=GERAL`/`(GERAL)` no nome (iPhone LACRADO, Apple Pencil, JBL) → **GERAL** (honra o ERP — comissão à taxa `geral`, não bonificado). Aprovado pelo Ricaliff.
+3. `Grupo=ANATEL` explícito → ANATEL; JBL/caixa de som → GERAL (não é celular); `∅`+PEÇA DE MANUTENÇÃO → ASSISTÊNCIA.
+4. Novo modo **`remapOnly`** no edge: reprocessa categorização a partir do `atendimentos_audit` existente, **sem chamar a API** (zero quota) — reprocessou todas as lojas/meses, inclusive monteiro (chave 402 inválida).
+
+**Por quê:** o campo estruturado `Grupo` é a categorização oficial do lojista; heurística por nome é palpite e só deve agir quando o ERP não classifica. `remapOnly` desacopla "corrigir regra de categoria" de "buscar dados novos".
+
+**Consequências:** comissão de Campina/Natal muda (lacrados saem de bonificado). Validado: João bate centavo a centavo com o coletor; GERAL/SUPER conferem exato no diff todos-os-meses. Caminho p/ 100%: lojista sempre usar grupos explícitos no Tenfront.
+
+**Como explicar em entrevista (30s):** "O ERP já categoriza o produto num campo estruturado (Grupo). O bug era o código adivinhar a categoria por nome/preço e ignorar esse campo. Inverti a prioridade: fonte estruturada manda, heurística é só fallback para o grupo genérico. E criei um modo de reprocessamento que reaplica as regras sobre os dados já salvos, sem reconsumir a API."

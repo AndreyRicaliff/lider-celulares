@@ -24,6 +24,9 @@ Deno.serve(async (req) => {
     // fullFetch: busca completa do mês pedido (sem ID-stop) p/ habilitar a conciliação
     // anti-fantasma no mês atual, que o fullYear (Jan→mês-1) não cobre.
     const fullFetch = Boolean(body.fullFetch);
+    // remapOnly: reprocessa categorização a partir do audit existente, sem chamar a API
+    // (reaplica regras de grupo sem gastar quota; serve p/ lojas com chave inválida).
+    const remapOnly = Boolean(body.remapOnly);
     const mes = getRequestedMonth(req, body);
     const onlyLojaId = typeof body.loja_id === 'string' ? body.loja_id : null;
     const onlyLojaIds = Array.isArray(body.loja_ids) ? (body.loja_ids as string[]) : null;
@@ -56,7 +59,7 @@ Deno.serve(async (req) => {
     }
 
     // Group-specific interval guard (prevents double-firing within same group)
-    if (!force && !dryRun && (onlyLojaId || onlyLojaIds)) {
+    if (!force && !dryRun && !remapOnly && (onlyLojaId || onlyLojaIds)) {
       const filterIds = onlyLojaIds ?? (onlyLojaId ? [onlyLojaId] : []);
       const { data: lastGroupSync } = await internalClient
         .from('sync_logs')
@@ -155,7 +158,7 @@ Deno.serve(async (req) => {
     // Verificar saldo uma única vez para todas as lojas (economiza N-1 req por ciclo)
     // Roda sempre — inclusive quando force=true (cron) — para não desperdiçar saldo checando por loja
     let sharedSaldo: number | undefined;
-    if (!dryRun && lojas.length > 0) {
+    if (!dryRun && !remapOnly && lojas.length > 0) {
       sharedSaldo = await checkSaldo(lojas[0]);
       console.log(`[global] Saldo compartilhado: ${sharedSaldo} req restantes`);
       if (sharedSaldo < MIN_SALDO_THRESHOLD) {
@@ -178,7 +181,7 @@ Deno.serve(async (req) => {
 
     const results = [];
     for (const loja of lojas) {
-      if (!force && dailyLimitedLojas.has(loja.id)) {
+      if (!force && !remapOnly && dailyLimitedLojas.has(loja.id)) {
         console.log(`[${loja.id}] Rate limit diário já atingido hoje (BRT) — pulando até 03:00 UTC.`);
         results.push({ loja_id: loja.id, skipped: true, reason: 'daily_rate_limit_today' });
         continue;
@@ -186,7 +189,7 @@ Deno.serve(async (req) => {
       try {
         // force só bypassa o guard de intervalo. fullFetch (opt-in) força busca completa do
         // mês p/ rodar a conciliação anti-fantasma; sem ele, ciclo incremental com ID-stop.
-        const result = await syncLoja(internalClient, loja, mes, dryRun, fullFetch, sharedSaldo);
+        const result = await syncLoja(internalClient, loja, mes, dryRun, fullFetch, sharedSaldo, remapOnly);
         results.push(result);
       } catch (err) {
         const msg = getErrorMessage(err);

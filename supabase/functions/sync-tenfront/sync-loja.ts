@@ -17,6 +17,7 @@ export const syncLoja = async (
   dryRun: boolean,
   forceFullFetch = false,
   preCheckedSaldo?: number,
+  remapOnly = false,
 ) => {
   console.log(`[SYNC_LOJA] Iniciando ${loja.id}. Mes: ${mes}. DryRun: ${dryRun}`);
 
@@ -28,8 +29,9 @@ export const syncLoja = async (
   celularesDebug.length = 0;
 
   // Use saldo já verificado globalmente (economiza 1 chamada Tenfront por loja)
-  const saldo = preCheckedSaldo !== undefined ? preCheckedSaldo : await checkSaldo(loja);
-  let apiCallsMade = preCheckedSaldo !== undefined ? 0 : 1;
+  // remapOnly = reprocessa categorização a partir do audit existente, sem tocar na API.
+  const saldo = remapOnly ? 999 : (preCheckedSaldo !== undefined ? preCheckedSaldo : await checkSaldo(loja));
+  let apiCallsMade = (remapOnly || preCheckedSaldo !== undefined) ? 0 : 1;
   if (saldo < MIN_SALDO_THRESHOLD) {
     console.warn(`[${loja.id}] Saldo insuficiente (${saldo} req). Sync abortado para preservar cota.`);
     if (!dryRun) {
@@ -43,15 +45,23 @@ export const syncLoja = async (
     return { loja_id: loja.id, mes, skipped: true, reason: `saldo_insuficiente (${saldo})` };
   }
 
-  const [lastSyncDate, lastKnownId] = forceFullFetch
-    ? [null, null]
-    : await Promise.all([
-        getLastSyncDate(internalClient, loja.id, mes),
-        getLastSyncedAtendimentoId(internalClient, loja.id, mes),
-      ]);
+  let allAtendimentos: Awaited<ReturnType<typeof fetchAllAtendimentos>>['records'] = [];
+  let wasPartial = false;
+  let pagesFetched = 0;
+  if (!remapOnly) {
+    const [lastSyncDate, lastKnownId] = forceFullFetch
+      ? [null, null]
+      : await Promise.all([
+          getLastSyncDate(internalClient, loja.id, mes),
+          getLastSyncedAtendimentoId(internalClient, loja.id, mes),
+        ]);
 
-  console.log(`[${loja.id}] Última data: ${lastSyncDate ?? 'nenhuma'} | Último ID: ${lastKnownId ?? 'nenhum'}`);
-  const { records: allAtendimentos, wasPartial, pagesFetched } = await fetchAllAtendimentos(loja, mes, false, lastSyncDate, 99, lastKnownId);
+    console.log(`[${loja.id}] Última data: ${lastSyncDate ?? 'nenhuma'} | Último ID: ${lastKnownId ?? 'nenhum'}`);
+    const fetched = await fetchAllAtendimentos(loja, mes, false, lastSyncDate, 99, lastKnownId);
+    allAtendimentos = fetched.records;
+    wasPartial = fetched.wasPartial;
+    pagesFetched = fetched.pagesFetched;
+  }
   apiCallsMade += pagesFetched; // saldo (já contado) + páginas buscadas
   console.log(`[${loja.id}] Total atendimentos: ${allAtendimentos.length}`);
 
@@ -88,7 +98,7 @@ export const syncLoja = async (
   }
   console.log(`[${loja.id}] Meses presentes na API: ${Array.from(monthsSeen).join(', ')} | amostra datas: ${sampleDates.join(' | ')}`);
 
-  if (mappedRows.length === 0) {
+  if (mappedRows.length === 0 && !remapOnly) {
     return {
       loja_id: loja.id,
       mes,

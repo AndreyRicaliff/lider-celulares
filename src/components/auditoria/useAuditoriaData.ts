@@ -3,13 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { AtendimentoAudit, TabelaPreco } from './types';
+import { idsParaQuery } from './grupos';
 
 interface Params {
   selectedLoja: string | null;
   selectedMes: string;
+  agruparCaruaru: boolean;
 }
 
-export function useAuditoriaData({ selectedLoja, selectedMes }: Params) {
+export function useAuditoriaData({ selectedLoja, selectedMes, agruparCaruaru }: Params) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -46,10 +48,13 @@ export function useAuditoriaData({ selectedLoja, selectedMes }: Params) {
   });
 
   const { data: atendimentos = [], isLoading } = useQuery({
-    queryKey: ['atendimentos-audit', selectedLoja, selectedMes],
+    queryKey: ['atendimentos-audit', selectedLoja, selectedMes, agruparCaruaru],
     queryFn: async () => {
       let query = supabase.from('atendimentos_audit').select('*').eq('mes', selectedMes);
-      if (selectedLoja) query = query.eq('loja_id', selectedLoja);
+      if (selectedLoja) {
+        const ids = idsParaQuery(selectedLoja, agruparCaruaru);
+        query = ids.length > 1 ? query.in('loja_id', ids) : query.eq('loja_id', ids[0]);
+      }
       const { data, error } = await query.order('data_atendimento', { ascending: false });
       if (error) throw error;
       return (data || []) as unknown as AtendimentoAudit[];

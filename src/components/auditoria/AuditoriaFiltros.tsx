@@ -18,6 +18,8 @@ interface Props {
   setCategoriaFiltro: (v: CategoriaId) => void;
   apenasConcluidas: boolean;
   setApenasConcluidas: (v: boolean) => void;
+  agruparCaruaru: boolean;
+  setAgruparCaruaru: (v: boolean) => void;
 }
 
 const labelCls = 'text-xs font-medium text-muted-foreground uppercase';
@@ -71,6 +73,11 @@ export const AuditoriaFiltros = (props: Props) => (
       <div className="flex items-center space-x-2 pb-2">
         <Checkbox id="concluidas" checked={props.apenasConcluidas} onCheckedChange={(c) => props.setApenasConcluidas(!!c)} />
         <Label htmlFor="concluidas" className="text-xs font-medium cursor-pointer">Apenas concluídas</Label>
+      </div>
+
+      <div className="flex items-center space-x-2 pb-2">
+        <Checkbox id="agrupar-caruaru" checked={props.agruparCaruaru} onCheckedChange={(c) => props.setAgruparCaruaru(!!c)} />
+        <Label htmlFor="agrupar-caruaru" className="text-xs font-medium cursor-pointer">Agrupar Caruaru (1 + 2)</Label>
       </div>
     </CardContent>
   </Card>

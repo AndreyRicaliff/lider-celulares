@@ -21,8 +21,9 @@ export const AuditoriaVendasPage = () => {
   const [vendedorFiltro, setVendedorFiltro] = useState('todos');
   const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaId>('geral');
   const [apenasConcluidas, setApenasConcluidas] = useState(true);
+  const [agruparCaruaru, setAgruparCaruaru] = useState(false);
 
-  const { atendimentos, tabelaPrecos, isLoading, syncMutation } = useAuditoriaData({ selectedLoja, selectedMes });
+  const { atendimentos, tabelaPrecos, isLoading, syncMutation } = useAuditoriaData({ selectedLoja, selectedMes, agruparCaruaru });
 
   const vendedores = useMemo(
     () => ['todos', ...Array.from(new Set(atendimentos.map((a) => a.vendedor_nome))).sort()],
@@ -115,6 +116,8 @@ export const AuditoriaVendasPage = () => {
         setCategoriaFiltro={setCategoriaFiltro}
         apenasConcluidas={apenasConcluidas}
         setApenasConcluidas={setApenasConcluidas}
+        agruparCaruaru={agruparCaruaru}
+        setAgruparCaruaru={setAgruparCaruaru}
       />
 
       {atendimentos.length > 0 && (

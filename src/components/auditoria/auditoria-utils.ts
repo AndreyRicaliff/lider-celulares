@@ -28,7 +28,7 @@ export function checkAlertaPreco(
 ): boolean {
   if (!produto || valor <= 0) return false;
   const p = produto.toUpperCase();
-  const regiao = lojaId === 'natal' || lojaId === 'caruaru' ? 'RN_PE' : 'PB';
+  const regiao = lojaId === 'natal' || lojaId === 'caruaru' || lojaId === 'caruaru-2' ? 'RN_PE' : 'PB';
 
   // PRO e nomes mais longos primeiro: evita casar "iPhone 15" com "iPhone 15 Pro".
   const ordenada = [...tabela].sort((a, b) => {

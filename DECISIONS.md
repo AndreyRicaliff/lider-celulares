@@ -630,3 +630,12 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Consequências:** comissão de Campina/Natal muda (lacrados saem de bonificado). Validado: João bate centavo a centavo com o coletor; GERAL/SUPER conferem exato no diff todos-os-meses. Caminho p/ 100%: lojista sempre usar grupos explícitos no Tenfront.
 
 **Como explicar em entrevista (30s):** "O ERP já categoriza o produto num campo estruturado (Grupo). O bug era o código adivinhar a categoria por nome/preço e ignorar esse campo. Inverti a prioridade: fonte estruturada manda, heurística é só fallback para o grupo genérico. E criei um modo de reprocessamento que reaplica as regras sobre os dados já salvos, sem reconsumir a API."
+
+## 2026-06-30 — [auditoria] Página de Dados Crus (API) ressuscitada
+
+**Problema:** verificar se o sync puxa fielmente do Tenfront, vendo o dado cru por atendimento/produto, sem cálculo do dashboard.
+**Opções consideradas:** (A) gerar HTML único offline via script; (B) reconstruir página do zero; (C) ressuscitar a `AuditoriaVendasPage` removida em cb153c0.
+**Decisão:** (C) — a tabela `atendimentos_audit` (2.959 linhas, `detalhes_brutos` por produto) continua populada; a página antiga já a lia com expandir-por-produto, filtros, alerta de preço, export Excel, realtime e botão de reprocessar (invoca `sync-tenfront`).
+**Por quê:** dado e UI já existiam e casam com o formato atual; reaproveitar > reconstruir. Periodização já vem do seletor de mês global (`selectedMes`).
+**Consequências:** religado em MainLayout (admin+supervisão) e Sidebar (grupo "Auditoria"). Monteiro aparece congelado em 26/06 até a chave ser corrigida — então o "reprocessar" da página passa a refletir a correção.
+**Como explicar em entrevista (30s):** "Em vez de reconstruir, recuperei do histórico git uma página que já lia a tabela de auditoria crua; validei que o formato do JSON (`detalhes_brutos`) ainda batia e religuei no roteamento por estado (Zustand `currentView`), com build e typecheck verdes."

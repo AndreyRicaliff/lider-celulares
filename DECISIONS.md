@@ -596,3 +596,19 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Dívidas/contas fora do ERP:** já cobertas pelo `DividasManager` existente (descrição, valor, parcelas, loja, mês início, histórico) — são manuais por natureza.
 
 **Fonte:** sessão 2026-06-29 com Ricalfiff (pedido do cliente via WhatsApp: editar salário/dívidas/contas fora da Tenfront).
+
+---
+
+## 2026-06-29 — [categorização] Confiar no `Grupo` do ERP (não re-classificar smartphone por nome)
+
+**Problema (cliente):** split Bonificado × Super Bonificado divergia da Tenfront. Total batia (João/Soledade: 27.109,91), mas BLC/SB diferia em R$1.849,99.
+
+**Causa:** `mapGrupoToCategory` decidia BLC/SB por **nome do produto + preço** (`classifySmartphone`), ignorando o campo **`Grupo`** que a Tenfront já entrega. O REALME C85 @ 1.849,99 vinha `Grupo=SUPER BONIFICADO` na API, mas `realme + valor≥1000` → BONIFICADO LC.
+
+**Decisão:** na prioridade 1 do `mapGrupoToCategory`, checar também o `Grupo` (`super bonificado`/`bonificado`) — fonte oficial. Keyword/preço só como fallback quando o Grupo vier vazio/genérico.
+
+**Verificado:** edge `sync-tenfront` deployada + Soledade/jun reprocessada → João **BLC 23.739,92 / SB 3.369,99 = exatamente a Tenfront**. Para Soledade a comissão não muda (taxa única no total); para Campina/Natal/Caruaru o split altera comissão (taxas BLC≠SB) → reprocessar essas lojas.
+
+**Pendente:** reprocessar demais lojas/meses + assistência técnica de itens com `Grupo` vazio (ex.: FRONTAL/tela) precisa de keyword/lançamento manual.
+
+**Fonte:** sessão 2026-06-29 com Ricalfiff (divergência reportada pelo cliente via WhatsApp).

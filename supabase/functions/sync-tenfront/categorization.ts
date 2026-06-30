@@ -53,13 +53,15 @@ export const mapGrupoToCategory = (grupo: string, produto: string, tipo = '', su
   const sNorm = norm(subtipoUpper);
   const tNorm = norm(tipoUpper);
 
-  // 1. PRIORIDADE MÁXIMA: Identificação explícita por nome do produto (Super Bonificado / Bonificado LC)
-  // Instrução do usuário: verificar regras específicas antes de fallbacks
-  if (pNorm.includes('super bonificado') || pNorm.includes('superbonificado')) {
+  // 1. PRIORIDADE MÁXIMA: categoria OFICIAL do ERP (campo Grupo) — fonte da verdade.
+  // Também aceita pelo nome do produto. Keyword/preço (classifySmartphone) só como fallback.
+  if (pNorm.includes('super bonificado') || pNorm.includes('superbonificado') ||
+      gNorm.includes('super bonificado') || gNorm.includes('superbonificado')) {
     return 'SUPER BONIFICADO';
   }
 
-  if (pNorm.includes('bonificado lc') || pNorm.includes('bonificadolc')) {
+  if (pNorm.includes('bonificado lc') || pNorm.includes('bonificadolc') ||
+      gNorm === 'bonificado' || gNorm.includes('bonificado lc') || gNorm.includes('bonificadolc')) {
     return 'BONIFICADO LC';
   }
 

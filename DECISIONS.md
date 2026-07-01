@@ -630,3 +630,15 @@ Também removidos 4 hooks de escrita sem caller (dead code): `useSaveVendas`, `u
 **Consequências:** comissão de Campina/Natal muda (lacrados saem de bonificado). Validado: João bate centavo a centavo com o coletor; GERAL/SUPER conferem exato no diff todos-os-meses. Caminho p/ 100%: lojista sempre usar grupos explícitos no Tenfront.
 
 **Como explicar em entrevista (30s):** "O ERP já categoriza o produto num campo estruturado (Grupo). O bug era o código adivinhar a categoria por nome/preço e ignorar esse campo. Inverti a prioridade: fonte estruturada manda, heurística é só fallback para o grupo genérico. E criei um modo de reprocessamento que reaplica as regras sobre os dados já salvos, sem reconsumir a API."
+
+## 2026-07-01 — [comissão] caruaru-2: 2ª chave Tenfront do mesmo PDV → comissão fundida, faturamento separado
+
+**Problema:** apareceu um 6º `loja_id` nos dados (`caruaru-2`, "Caruaru 2"): cadastrado em `lojas` com credencial Tenfront própria, 17 atendimentos só em junho (R$25k bonificado), 0 duplicatas de `caruaru` (IDs novos), mas os 3 vendedores (FELIPE/ALMIR/LUIZ) são todos da caruaru. Sem `configuracoes` e sem `colaborador_lojas` próprios.
+**Opções consideradas:**
+- A) Fundir tudo na caruaru (também no faturamento) — simples, mas some a visibilidade da 2ª chave.
+- B) Loja separada com meta própria — exigiria config+vínculos próprios e **fragmentaria a meta** dos vendedores (cada terminal abaixo da meta → comissão menor injusta).
+- C) Faturamento separado, comissão fundida — escolhida.
+**Decisão:** (C). Comissão soma caruaru+caruaru-2 na meta única do vendedor via `getLojaIdsForQuery` (`caruaru → [caruaru, caruaru-2]`); config/vínculos resolvem no pai (`mapLojaToSharedBase`). Faturamento continua separado de graça porque `faturamento_loja` já mantém a linha `caruaru-2`.
+**Por quê:** vendedores são os mesmos → meta tem que ser sobre o total real de vendas, não por terminal. O mecanismo de "consulta unificada" já existia no código para exatamente esse caso (zero drift). `LOJAS_IDS` fica nas 5 canônicas (não inclui caruaru-2), então a comissão nunca roda o terminal isolado.
+**Consequências:** `calculateCommissionsForLoja('caruaru')` passa a puxar `.in(['caruaru','caruaru-2'])`. Impacto jun validado: ALMIR 35.088→51.438 base smart (cruza meta 49k), comissão R$557,14→R$1.279,94; FELIPE +R$19,60; LUIZ nova linha R$9,10. 0 comissões órfãs em caruaru-2. Dívida: se abrirem uma Caruaru 3, replicar no mapa `LOJA_TERMINAIS`.
+**Como explicar em entrevista (30s):** "Uma loja operava com 2 terminais Tenfront, cada um uma chave. Tratar como lojas separadas fragmentaria a meta do vendedor e reduziria a comissão dele injustamente. Reusei uma abstração de 'loja unificada' que o código já tinha: a comissão soma os dois terminais numa meta só, enquanto o relatório de faturamento continua mostrando cada terminal separado."

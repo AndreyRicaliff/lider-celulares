@@ -11,7 +11,7 @@ import {
   isLojaExcluidaBotons,
   getBotonOverride,
 } from '@/lib/constants';
-import { isLojaCampinaNatal, isLojaNatalLike } from '@/lib/lojaRules';
+import { isLojaCampinaNatal, isLojaNatalLike, getLojaIdsForQuery, mapLojaToSharedBase } from '@/lib/lojaRules';
 import {
   calcularComissaoSoledadeMonteiro,
   calcularComissaoCampinaNatal,
@@ -126,11 +126,15 @@ async function fetchColaboradoresForLoja(lojaId: string, client: typeof supabase
 
 export async function calculateCommissionsForLoja(lojaId: string, mes: string, client: typeof supabase = supabase): Promise<{ count: number; error?: string }> {
   try {
-    // Fetch vendas
+    // Terminal-filho (ex.: caruaru-2) não calcula comissão própria: suas vendas são
+    // fundidas no PDV pai (caruaru). Pular evita dupla contagem / comissão sem config.
+    if (mapLojaToSharedBase(lojaId) !== lojaId) return { count: 0 };
+
+    // Fetch vendas (funde terminais do mesmo PDV: caruaru + caruaru-2 na meta única)
     const { data: vendas, error: vendasError } = await client
       .from('vendas')
       .select('*')
-      .eq('loja_id', lojaId)
+      .in('loja_id', getLojaIdsForQuery(lojaId))
       .eq('mes', mes);
     if (vendasError) throw vendasError;
     if (!vendas || vendas.length === 0) return { count: 0 };
